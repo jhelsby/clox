@@ -8,6 +8,15 @@ void initChunk(Chunk* chunk) {
     chunk->code = NULL;
 }
 
+void freeChunk(Chunk* chunk) {
+    // Deallocate chunk memory.
+    FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
+
+    // Zero out the fields, so the chunk
+    // is in well-defined empty state.
+    initChunk(chunk);
+}
+
 // Standard append implementation for a dynamic array.
 void writeChunk(Chunk* chunk, uint8_t byte) {
     // CHeck if array is full.

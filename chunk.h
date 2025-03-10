@@ -24,6 +24,9 @@ typedef struct {
 
 void initChunk(Chunk* chunk);
 
+// Free chunk memory once no longer needed.
+void freeChunk(Chunk* chunk);
+
 // Append an instruction to the chunk.
 void writeChunk(Chunk* chunk, uint8_t byte);
 

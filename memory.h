@@ -17,6 +17,10 @@
     (type*)reallocate(pointer, sizeof(type) * (oldCount), \
         sizeof(type) * (newCount))
 
+// Frees dynamic array memory based on its type and contents.
+#define FREE_ARRAY(type, pointer, oldCount) \
+    (type*)reallocate(pointer, sizeof(type) * (oldCount), 0)
+
 // Single function used for all dynamic memory management
 // in clox -  allocation, freeing, and reallocation.
 void* reallocate(void* pointer, size_t oldSize, size_t newSize);
