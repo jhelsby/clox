@@ -11,10 +11,14 @@
 #define GROW_CAPACITY(capacity) \
     ((capacity < 8 ? 8 : (capacity) * 2))
 
+// Allocates dynamic array memory based on 
+// its type, contents, and desired new size.
 #define GROW_ARRAY(type, pointer, oldCount, newCount) \
     (type*)reallocate(pointer, sizeof(type) * (oldCount), \
         sizeof(type) * (newCount))
 
+// Single function used for all dynamic memory management
+// in clox -  allocation, freeing, and reallocation.
 void* reallocate(void* pointer, size_t oldSize, size_t newSize);
 
 #endif
