@@ -1,0 +1,7 @@
+# The compiled clox binary.
+clox   
+
+# Also the compiled clox binary.
+a.out
+
+.vscode
