@@ -9,15 +9,6 @@ void initChunk(Chunk* chunk) {
     chunk->code = NULL;
 }
 
-void freeChunk(Chunk* chunk) {
-    // Deallocate chunk memory.
-    FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
-
-    // Zero out the fields, so the chunk
-    // is in well-defined empty state.
-    initChunk(chunk);
-}
-
 // Append a byte to our chunk.
 // Standard append implementation for a dynamic array.
 void writeChunk(Chunk* chunk, uint8_t byte) {
@@ -28,7 +19,7 @@ void writeChunk(Chunk* chunk, uint8_t byte) {
         // Set the capacity to some suitably larger number.
         chunk->capacity = GROW_CAPACITY(oldCapacity);
 
-        // Create or grow the array to the new 
+        // Create or grow the array to the new
         // capacity, allocating memory as needed.
         chunk->code = GROW_ARRAY(uint8_t, chunk->code, oldCapacity, chunk->capacity);
     }
@@ -38,4 +29,13 @@ void writeChunk(Chunk* chunk, uint8_t byte) {
 
     // Increment count to include the new instruction.
     chunk->count++;
+}
+
+void freeChunk(Chunk* chunk) {
+    // Deallocate chunk memory.
+    FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
+
+    // Zero out the fields, so the chunk
+    // is in well-defined empty state.
+    initChunk(chunk);
 }
