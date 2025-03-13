@@ -43,3 +43,10 @@ void freeChunk(Chunk* chunk) {
     // is in well-defined empty state.
     initChunk(chunk);
 }
+
+// Add a new constant to the chunk's value pool.
+// Returns the index the constant was stored at.
+int addConstant(Chunk* chunk, Value value) {
+    writeValueArray(&chunk->constants, value);
+    return chunk->constants.count - 1;
+}

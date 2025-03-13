@@ -34,5 +34,8 @@ void writeChunk(Chunk* chunk, uint8_t byte);
 // Free chunk memory once no longer needed.
 void freeChunk(Chunk* chunk);
 
+// Convenience function to add a new
+// constant to the chunk's value pool.
+int addConstant(Chunk*, Value value);
 
 #endif
