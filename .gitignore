@@ -1,7 +1,9 @@
 # The compiled clox binary.
-clox   
+clox
 
 # Also the compiled clox binary.
 a.out
 
+# Debugging utilities.
 .vscode
+app
