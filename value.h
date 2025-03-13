@@ -30,4 +30,7 @@ void writeValueArray(ValueArray* array, Value value);
 // Free array memory once no longer needed.
 void freeValueArray(ValueArray* array);
 
+// Print the value of the given constant.
+void printValue(Value value);
+
 #endif
