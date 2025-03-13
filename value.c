@@ -20,7 +20,7 @@ void writeValueArray(ValueArray* array, Value value) {
 
         // Create or grow the array to the new
         // capacity, allocating memory as needed.
-        GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
+        array->values = GROW_ARRAY(Value, array->values, oldCapacity, array->capacity);
     }
 
     // Append the new value to the array.
