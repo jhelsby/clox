@@ -14,3 +14,9 @@ gcc -o clox *.c # To call the output binary "clox".
 ```
 
 You can then run the binary with `./a.out` or `./clox` (depending what you just called it!).
+
+### Implementation Notes
+
+Here are some miscellaneous technical points about the _clox_ implementation I wanted to keep track of. However, please note that most of my implementation notes are in the form of code comments.
+
+* Each type of dynamic array we use in _clox_ requires its own nearly-identical struct, init, write, and free functions. This isn't very elegant, but we don't need many of them. We could avoid repetition by simulating generics using preprocessor macros, but this would likely prove even more complicated.
