@@ -9,6 +9,10 @@
 // Each bytecode instruction has a one-byte
 // operation code which controls its behaviour.
 typedef enum {
+    // Load a constant from the chunk value pool.
+    // Use an operand to specify which constant.
+    OP_CONSTANT,
+
     // Return from the current function.
     OP_RETURN,
 } OpCode;
