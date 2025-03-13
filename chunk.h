@@ -4,6 +4,7 @@
 #define clox_chunk_h
 
 #include "common.h"
+#include "value.h"
 
 // Each bytecode instruction has a one-byte
 // operation code which controls its behaviour.
@@ -20,6 +21,9 @@ typedef struct {
 
     // Store the instructions.
     uint8_t* code;
+
+    // Store chunk constants in a value pool.
+    ValueArray constants;
 } Chunk;
 
 void initChunk(Chunk* chunk);

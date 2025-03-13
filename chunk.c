@@ -7,6 +7,7 @@ void initChunk(Chunk* chunk) {
     chunk->count = 0;
     chunk->capacity = 0;
     chunk->code = NULL;
+    initValueArray(&chunk->constants);
 }
 
 // Append a byte to our chunk.
@@ -34,6 +35,9 @@ void writeChunk(Chunk* chunk, uint8_t byte) {
 void freeChunk(Chunk* chunk) {
     // Deallocate chunk memory.
     FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);
+
+    // Free the constants stored in our chunk.
+    freeValueArray(&chunk->constants);
 
     // Zero out the fields, so the chunk
     // is in well-defined empty state.
