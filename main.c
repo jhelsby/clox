@@ -4,8 +4,7 @@
 #include "vm.h"
 
 int main(int argc, const char* argv[]) {
-    // The VM is used throughout the
-    // interpreter's lifetime.
+    // The VM is used throughout the interpreter's lifetime.
     initVM();
 
     // Temporary testing code.
@@ -23,6 +22,9 @@ int main(int argc, const char* argv[]) {
     // Disassemble the test chunk and
     // print its contents.
     disassembleChunk(&chunk, "test chunk");
+
+    // Tell the VM to interpret the current bytecode chunk.
+    interpret(&chunk);
 
     freeVM();
     freeChunk(&chunk);

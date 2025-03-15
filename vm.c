@@ -1,3 +1,5 @@
+#include <stdio.h>
+
 #include "common.h"
 #include "vm.h"
 
@@ -11,4 +13,42 @@ void initVM() {
 }
 
 void freeVM() {
+}
+
+InterpretResult interpret(Chunk* chunk) {
+    vm.chunk = chunk;
+
+    // Instruction pointer. Points to the
+    // instruction _about_ to be executed.
+    vm.ip = vm.chunk->code;
+
+    return run();
+}
+
+// Decode and execute each instruction in the VM.
+static InterpretResult run() {
+#define READ_BYTE() (*vm.ip++)
+#define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+
+    for (;;) {
+        uint8_t instruction;
+        switch (instruction = READ_BYTE()) {
+            case OP_CONSTANT: {
+                Value constant = READ_CONSTANT();
+
+                // Used for testing purposes so we know
+                // OP_CONSTANT is being interpreted.
+                printValue(constant);
+                printf("\n");
+
+                break;
+            }
+            case OP_RETURN: {
+                return INTERPRET_OK;
+            }
+        }
+    }
+
+#undef READ_BYTE
+#undef READ_CONSTANT
 }

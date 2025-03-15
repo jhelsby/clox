@@ -7,12 +7,23 @@
 #include "chunk.h"
 
 // Stores all state needed to run a chunk.
-// Will be expanded later.
 typedef struct {
     Chunk* chunk;
+
+    // Instruction pointer.
+    uint8_t* ip;
 } VM;
+
+// Used to set the exit code of a process
+// for error reporting.
+typedef enum {
+    INTERPRET_OK,
+    INTERPRET_COMPILE_ERROR,
+    INTERPRET_RUNTIME_ERROR
+} InterpretResult;
 
 void initVM();
 void freeVM();
+InterpretResult interpret(Chunk* chunk);
 
 #endif
