@@ -5,19 +5,19 @@
 int main(int argc, const char* argv[]) {
 
     // Temporary testing code.
-    // Currently testing OP_VALUE and a
-    // manually loaded constant.
+    // Currently testing line information.
     Chunk chunk;
     initChunk(&chunk);
 
     int constant = addConstant(&chunk, 1.2);
-    writeChunk(&chunk, OP_CONSTANT);
-    writeChunk(&chunk, constant);
-    writeChunk(&chunk, OP_RETURN);
+
+    // Pass in arbitrary line number (123) for testing.
+    writeChunk(&chunk, OP_CONSTANT, 123);
+    writeChunk(&chunk, constant, 123);
+    writeChunk(&chunk, OP_RETURN, 123);
 
     // Disassemble the test chunk and
-    // print its contents. We expect it to contain
-    // a single OP_RETURN.
+    // print its contents.
     disassembleChunk(&chunk, "test chunk");
 
     freeChunk(&chunk);
