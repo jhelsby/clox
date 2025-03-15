@@ -24,4 +24,14 @@ You can then run the binary with `./a.out` or `./clox` (depending what you just 
 
 Here are some miscellaneous technical points about the _clox_ implementation I wanted to keep track of. However, please note that most of my implementation notes are in the form of code comments.
 
+#### Basic Structure
+
+I will expand on this as my implementation develops.
+
+* Our Lox code is converted into a series of [_chunks_](./chunk.h) - compact sequences of bytecode instructions by the compiler.
+
+* The virtual machine deserialises these chunks and executes them.
+
+#### Miscellaneous points
+
 * Each type of dynamic array we use in _clox_ requires its own nearly-identical struct, init, write, and free functions. This isn't very elegant, but we don't need many of them. We could avoid repetition by simulating generics using preprocessor macros, but this would likely prove even more complicated.
