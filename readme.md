@@ -35,3 +35,5 @@ I will expand on this as my implementation develops.
 #### Miscellaneous points
 
 * Each type of dynamic array we use in _clox_ requires its own nearly-identical struct, init, write, and free functions. This isn't very elegant, but we don't need many of them. We could avoid repetition by simulating generics using preprocessor macros, but this would likely prove even more complicated.
+
+* `OP_CONSTANT` uses only a single byte for its operand, limiting a chunk to 256 different constants. This could be addressed by making it use more bytes (which would make every constant instruction take up more space), or by adding a new `OP_CONSTANT_LONG` instruction for this special case.
