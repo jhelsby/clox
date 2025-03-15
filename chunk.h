@@ -26,14 +26,19 @@ typedef struct {
     // Store the instructions.
     uint8_t* code;
 
+    // Store the line number of each
+    // instruction, for error reporting.
+    int* lines;
+
     // Store chunk constants in a value pool.
     ValueArray constants;
 } Chunk;
 
 void initChunk(Chunk* chunk);
 
-// Append an instruction to the chunk.
-void writeChunk(Chunk* chunk, uint8_t byte);
+// Append an instruction to the chunk, storing
+// its line number for error reporting.
+void writeChunk(Chunk* chunk, uint8_t byte, int line);
 
 // Free chunk memory once no longer needed.
 void freeChunk(Chunk* chunk);
