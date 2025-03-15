@@ -48,6 +48,15 @@ static int constantInstruction(const char* name, Chunk* chunk, int offset) {
 int disassembleInstruction(Chunk* chunk, int offset) {
     printf("%04d ", offset);
 
+    if (offset > 0 &&
+            chunk->lines[offset] == chunk->lines[offset - 1]) {
+        // Add marker if instruction is from the
+        // same source line as the previous one.
+        printf("   | ");
+    } else {
+        printf("%4d ", chunk->lines[offset]);
+    }
+
     uint8_t instruction = chunk->code[offset];
     switch (instruction) {
         case OP_CONSTANT:
