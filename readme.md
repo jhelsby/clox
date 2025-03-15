@@ -1,6 +1,9 @@
 # clox
 
-This repository contains my implementation of the _clox_ interpreter described in the book [_Crafting Interpreters_](https://craftinginterpreters.com/) (2021), by Robert Nystrom. It comprises of a bytecode compiler, and a virtual machine to execute the bytecode instructions with garbage collection.
+This repository contains my implementation of the _clox_ interpreter described in the book [_Crafting Interpreters_](https://craftinginterpreters.com/) (2021), by Robert Nystrom. It is written in C and comprises of:
+
+1. a bytecode compiler.
+2. a virtual machine to execute the bytecode instructions, with garbage collection.
 
 _clox_ interprets the programming language _Lox_, designed for the purposes of the book. Lox is a simple, dynamically typed, object-oriented language. Its built-in data types are booleans, numbers, strings, and nil.
 
