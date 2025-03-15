@@ -1,4 +1,7 @@
 // Module to create a "chunk" (i.e. sequence) of bytecode instructions.
+// Our compiler will transform user code into a series of chunks,
+// which can then be efficiently deserialised and executed by the VM.
+
 
 #ifndef clox_chunk_h
 #define clox_chunk_h
