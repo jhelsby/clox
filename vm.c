@@ -15,16 +15,6 @@ void initVM() {
 void freeVM() {
 }
 
-InterpretResult interpret(Chunk* chunk) {
-    vm.chunk = chunk;
-
-    // Instruction pointer. Points to the
-    // instruction _about_ to be executed.
-    vm.ip = vm.chunk->code;
-
-    return run();
-}
-
 // Decode and execute each instruction in the VM.
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
@@ -51,4 +41,14 @@ static InterpretResult run() {
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+}
+
+InterpretResult interpret(Chunk* chunk) {
+    vm.chunk = chunk;
+
+    // Instruction pointer. Points to the
+    // instruction _about_ to be executed.
+    vm.ip = vm.chunk->code;
+
+    return run();
 }
