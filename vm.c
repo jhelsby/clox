@@ -44,7 +44,21 @@ Value pop() {
 // Decode and execute each instruction in the VM.
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
+
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+
+// This macro simplifies binary operations,
+// especially for type checking.
+//
+// The do-while block ensures the statements are the
+// same scope when macro is expanded. For details, see:
+// https://craftinginterpreters.com/a-virtual-machine.html#binary-operators
+#define BINARY_OP(op) \
+    do { \
+        double b = pop(); \
+        double a = pop(); \
+        push(a op b); \
+    } while (false)
 
     for (;;) {
 
@@ -79,6 +93,13 @@ static InterpretResult run() {
 
                 break;
             }
+
+            // Binary arithmetic operators.
+            case OP_ADD:        BINARY_OP(+); break;
+            case OP_SUBTRACT:   BINARY_OP(-); break;
+            case OP_MULTIPLY:   BINARY_OP(*); break;
+            case OP_DIVIDE:     BINARY_OP(/); break;
+
             // Negate the top of the stack.
             case OP_NEGATE: push(-pop()); break;
 
@@ -97,6 +118,7 @@ static InterpretResult run() {
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef BINARY_OP
 }
 
 InterpretResult interpret(Chunk* chunk) {

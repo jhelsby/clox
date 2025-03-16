@@ -16,6 +16,12 @@ typedef enum {
     // Use an operand to specify which constant.
     OP_CONSTANT,
 
+    // Standard binary arithmetic operators.
+    OP_ADD,
+    OP_SUBTRACT,
+    OP_MULTIPLY,
+    OP_DIVIDE,
+
     // Perform the operation -(x) on a number x.
     OP_NEGATE,
 
