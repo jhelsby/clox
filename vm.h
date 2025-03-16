@@ -5,6 +5,9 @@
 #define clox_vm_h
 
 #include "chunk.h"
+#include "value.h"
+
+#define STACK_MAX 256
 
 // Stores all state needed to run a chunk.
 typedef struct {
@@ -12,6 +15,12 @@ typedef struct {
 
     // Instruction pointer.
     uint8_t* ip;
+
+    // Provides a stack to store temporary variables.
+    Value stack[STACK_MAX];
+    // Stack pointer. Points to where the next value
+    // will go. An empty stack has stackTop = 0.
+    Value* stackTop;
 } VM;
 
 // Used to set the exit code of a process
@@ -25,5 +34,9 @@ typedef enum {
 void initVM();
 void freeVM();
 InterpretResult interpret(Chunk* chunk);
+
+// Manipulate the value stack.
+void push(Value value);
+Value pop();
 
 #endif

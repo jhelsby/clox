@@ -10,11 +10,36 @@
 // good idea for larger systems!
 VM vm;
 
+static void resetStack() {
+    // Reset by setting the stack top to the beginning
+    // of the stack. No need to erase old values -
+    // we can just overwrite them.
+    vm.stackTop = vm.stack;
+}
+
 void initVM() {
+    resetStack();
 }
 
 void freeVM() {
 }
+
+// Push onto the value stack.
+void push(Value value) {
+    // Add the value to the top of the stack,
+    // which stackTop points to.
+    *vm.stackTop = value;
+
+    vm.stackTop++;
+}
+
+// Pop from the value stack.
+Value pop() {
+    vm.stackTop--;
+
+    return *vm.stackTop;
+}
+
 
 // Decode and execute each instruction in the VM.
 static InterpretResult run() {
