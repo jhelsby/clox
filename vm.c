@@ -1,6 +1,7 @@
 #include <stdio.h>
 
 #include "common.h"
+#include "debug.h"
 #include "vm.h"
 
 // Use a global variable (!?) to access the VM.
@@ -21,6 +22,17 @@ static InterpretResult run() {
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
 
     for (;;) {
+
+// If the VM's diagnostic logging is active,
+// print the instruction with its chunk offset.
+#ifdef DEBUG_TRACE_EXECUTION
+        disassembleInstruction(vm.chunk,
+            // Convert the instruction pointer into
+            // a relative offset from the beginning
+            // of the chunk.
+            (int)(vm.ip - vm.chunk->code));
+#endif
+
         uint8_t instruction;
         switch (instruction = READ_BYTE()) {
             case OP_CONSTANT: {
