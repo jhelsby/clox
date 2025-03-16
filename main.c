@@ -8,7 +8,7 @@ int main(int argc, const char* argv[]) {
     initVM();
 
     // Temporary testing code.
-    // Currently testing line information.
+    // Currently testing the negate operation.
     Chunk chunk;
     initChunk(&chunk);
 
@@ -17,6 +17,8 @@ int main(int argc, const char* argv[]) {
     // Pass in arbitrary line number (123) for testing.
     writeChunk(&chunk, OP_CONSTANT, 123);
     writeChunk(&chunk, constant, 123);
+    writeChunk(&chunk, OP_NEGATE, 123);
+
     writeChunk(&chunk, OP_RETURN, 123);
 
     // Disassemble the test chunk and

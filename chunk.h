@@ -16,6 +16,9 @@ typedef enum {
     // Use an operand to specify which constant.
     OP_CONSTANT,
 
+    // Perform the operation -(x) on a number x.
+    OP_NEGATE,
+
     // Return from the current function.
     OP_RETURN,
 } OpCode;

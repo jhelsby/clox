@@ -79,6 +79,9 @@ static InterpretResult run() {
 
                 break;
             }
+            // Negate the top of the stack.
+            case OP_NEGATE: push(-pop()); break;
+
             case OP_RETURN: {
 
                 // Temporary, for testing.
