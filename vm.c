@@ -48,9 +48,20 @@ static InterpretResult run() {
 
     for (;;) {
 
-// If the VM's diagnostic logging is active,
-// print the instruction with its chunk offset.
+// If active, handle VM's diagnostic logging.
 #ifdef DEBUG_TRACE_EXECUTION
+        printf("          ");
+
+        // Print stack trace - every stack value in order.
+        for (Value* slot = vm.stack; slot < vm.stackTop; slot++) {
+            printf("[ ");
+            printValue(*slot);
+            printf(" ]");
+        }
+        printf("\n");
+
+        // Print the instruction being executed,
+        // with its chunk offset.
         disassembleInstruction(vm.chunk,
             // Convert the instruction pointer into
             // a relative offset from the beginning
@@ -63,14 +74,19 @@ static InterpretResult run() {
             case OP_CONSTANT: {
                 Value constant = READ_CONSTANT();
 
-                // Used for testing purposes so we know
-                // OP_CONSTANT is being interpreted.
-                printValue(constant);
-                printf("\n");
+                // Add the constant to the value stack.
+                push(constant);
 
                 break;
             }
             case OP_RETURN: {
+
+                // Temporary, for testing.
+                // Returning a function will pop the stack
+                // and print the first value before exiting.
+                printValue(pop());
+                printf("\n");
+
                 return INTERPRET_OK;
             }
         }
