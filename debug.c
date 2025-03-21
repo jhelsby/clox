@@ -6,7 +6,7 @@
 // Given a chunk and a byte offset, print the
 // offset and the instruction stored there.
 void disassembleChunk(Chunk* chunk, const char* name) {
-    printf("== &s ==\n", name);
+    printf("== %s ==\n", name);
 
     // Iterate through the chunk, one instruction
     // at a time. Instead of incrementing offset
