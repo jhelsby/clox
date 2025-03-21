@@ -43,7 +43,6 @@ static char* readFile(const char* path) {
         exit(74);
     }
 
-    malloc(fileSize + 1);
     size_t bytesRead = fread(buffer, sizeof(char), fileSize, file);
 
     // Handle the read failing.
