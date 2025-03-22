@@ -1,0 +1,6 @@
+// Used for testing my WIP clox compiler.
+
+4 + 0.4;
+"Parser testing";
+(15.5 / 2 + 0.142 + (-152.0502) * 1);
+4 + "foo";
