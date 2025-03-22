@@ -117,12 +117,70 @@ static void skipWhitespace() {
   }
 }
 
+// Helper function for identifierType().
+// Checks if the given identifier marches rest and
+// is thus a keyword (e.g. "class"), or just a
+// normal identifier (e.g. a variable name).
+static TokenType checkKeyword(int start, int length,
+  const char* rest, TokenType type) {
+if (
+    // Check remainder of identifier is correct length.
+    scanner.current - scanner.start == start + length &&
+    // Check remainder of identifier matches rest.
+    memcmp(scanner.start + start, rest, length) == 0) {
+  return type;
+}
+
+// If it's not a keyword
+return TOKEN_IDENTIFIER;
+}
+
 // Helper function for identifier().
 // Once we have scanned a keyword, match it
 // to its type (e.g. if, var, class, etc.).
 static TokenType identifierType() {
 
-  // I'll expand this function soon.
+  // Use a trie to check if the scanned
+  // characters are part of a keyword.
+  // The complete trie of all Lox keywords
+  // can be viewed here:
+  // https://craftinginterpreters.com/image/scanning-on-demand/keywords.png
+  switch (scanner.start[0]) {
+    // Handle all cases where the first letter
+    // only matches a single keyword.
+    case 'a': return checkKeyword(1, 2, "nd", TOKEN_AND);
+    case 'c': return checkKeyword(1, 4, "lass", TOKEN_CLASS);
+    case 'e': return checkKeyword(1, 3, "lse", TOKEN_ELSE);
+    case 'i': return checkKeyword(1, 1, "f", TOKEN_IF);
+    case 'n': return checkKeyword(1, 2, "il", TOKEN_NIL);
+    case 'o': return checkKeyword(1, 1, "r", TOKEN_OR);
+    case 'p': return checkKeyword(1, 4, "rint", TOKEN_PRINT);
+    case 'r': return checkKeyword(1, 5, "eturn", TOKEN_RETURN);
+    case 's': return checkKeyword(1, 4, "uper", TOKEN_SUPER);
+    case 'v': return checkKeyword(1, 2, "ar", TOKEN_VAR);
+    case 'w': return checkKeyword(1, 4, "hile", TOKEN_WHILE);
+    // Three keywords begin with "f":
+    // "false", "for", and "fun".
+    case 'f':
+      if (scanner.current - scanner.start > 1) {
+        switch (scanner.start[1]) {
+          case 'a': return checkKeyword(2, 3, "lse", TOKEN_FALSE);
+          case 'o': return checkKeyword(2, 1, "r", TOKEN_FOR);
+          case 'u': return checkKeyword(2, 1, "n", TOKEN_FUN);
+        }
+      }
+      break;
+    // Two keywords begin with "t": "this" and "true".
+    case 't':
+      if (scanner.current - scanner.start > 1) {
+        switch (scanner.start[1]) {
+          case 'h': return checkKeyword(2, 2, "is", TOKEN_THIS);
+          case 'r': return checkKeyword(2, 2, "ue", TOKEN_TRUE);
+        }
+      }
+      break;
+  }
+
   return TOKEN_IDENTIFIER;
 }
 
