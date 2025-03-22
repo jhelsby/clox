@@ -6,3 +6,7 @@
 4 + "foo";
 a = 10.125;
 var b = "test";
+
+// Testing that keywords are assigned
+// different token types to variable names.
+class test = var + b;
