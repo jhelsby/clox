@@ -21,6 +21,15 @@ typedef struct {
 } Parser;
 
 Parser parser;
+Parser parser;
+
+// Store the chunk currently being compiled.
+// Gets set at the beginning of compile().
+Chunk* compilingChunk;
+
+static Chunk* currentChunk() {
+  return compilingChunk;
+}
 
 static void errorAt(Token* token, const char* message) {
   // Only report the first error we find.
@@ -81,8 +90,32 @@ static void consume(TokenType type, const char* message) {
   errorAtCurrent(message);
 }
 
+// Append a byte to the chunk.
+static void emitByte(uint8_t byte) {
+  writeChunk(currentChunk(), byte, parser.previous.line);
+}
+
+// Append two bytes to a chunk, for when we write
+// an opcode followed by a one-byte operand.
+static void emitBytes(uint8_t byte1, uint8_t byte2) {
+  emitByte(byte1);
+  emitByte(byte2);
+}
+
+// Append a return instruction to the chunk.
+static void emitReturn() {
+  emitByte(OP_RETURN);
+}
+
+// Completes a compiled chunk by adding
+// a return instruction at the end.
+static void endCompiler() {
+  emitReturn();
+}
+
 void compile(const char* source, Chunk* chunk) {
   initScanner(source);
+  compilingChunk = chunk;
 
   parser.hadError = false;
   parser.panicMode = false;
@@ -90,6 +123,7 @@ void compile(const char* source, Chunk* chunk) {
   advance();
   expression();
   consume(TOKEN_EOF, "Expect end of expression.");
+  endCompiler();
 
   // Indicate whether the compilation was successful.
   return !parser.hadError;
