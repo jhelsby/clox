@@ -56,11 +56,6 @@ static Chunk* currentChunk() {
 }
 
 static void errorAt(Token* token, const char* message) {
-  // Only report the first error we find.
-  // Avoids reporting error cascades.
-  if (parser.panicMode) return;
-  parser.panicMode = true;
-
   fprintf(stderr, "[line %d] Error", token->line);
 
   if (token->type == TOKEN_EOF) {
@@ -68,12 +63,15 @@ static void errorAt(Token* token, const char* message) {
   } else if (token->type == TOKEN_ERROR) {
     // Nothing.
   } else {
-    // Show the lexeme (if human-readable).
     fprintf(stderr, " at '%.*s'", token->length, token->start);
   }
 
   fprintf(stderr, ": %s\n", message);
   parser.hadError = true;
+}
+
+static void error(const char* message) {
+  errorAt(&parser.previous, message);
 }
 
 // Report an error at the current token.
@@ -305,7 +303,7 @@ static void expression() {
   parsePrecedence(PREC_ASSIGNMENT);
 }
 
-void compile(const char* source, Chunk* chunk) {
+bool compile(const char* source, Chunk* chunk) {
   initScanner(source);
   compilingChunk = chunk;
 
