@@ -8,6 +8,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// Flag to dump a compiled chunk.
+#define DEBUG_PRINT_CODE
+
 // Flag to add diagnostic logging to the VM.
 #define DEBUG_TRACE_EXECUTION
 
