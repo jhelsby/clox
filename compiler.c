@@ -1,5 +1,5 @@
-// Single-pass compiler. Parses source code,
-// producing parts of an AST as needed,
+// Single-pass compiler. Parses source code using
+// Pratt parser, producing parts of an AST as needed,
 // and outputting bytecode as it goes.
 
 #include <stdio.h>
@@ -20,7 +20,31 @@ typedef struct {
   bool panicMode;
 } Parser;
 
-Parser parser;
+typedef enum {
+  // Precedence levels from lowest to highest.
+  PREC_NONE,
+  PREC_ASSIGNMENT,  // =
+  PREC_OR,          // or
+  PREC_AND,         // and
+  PREC_EQUALITY,    // == !=
+  PREC_COMPARISON,  // < > <= >=
+  PREC_TERM,        // + -
+  PREC_FACTOR,      // * /
+  PREC_UNARY,       // ! -
+  PREC_CALL,        // . ()
+  PREC_PRIMARY
+} Precedence;
+
+// Simple typedef for a function type with no arguments and
+// returns nothing. Hides C's function pointer type syntax.
+typedef void (*ParseFn)();
+
+typedef struct {
+  ParseFn prefix;
+  ParseFn infix;
+  Precedence precedence;
+} ParseRule;
+
 Parser parser;
 
 // Store the chunk currently being compiled.
@@ -133,6 +157,33 @@ static void endCompiler() {
   emitReturn();
 }
 
+// Declare these here so we can reference them in our rules
+// table below, then define them AFTER the table.
+static void expression();
+static ParseRule* getRule(TokenType type);
+static void parsePrecedence(Precedence precedence);
+
+// Compile a binary expression, with an infix operator.
+static void binary() {
+  // Assume the left-hand operand expression has already been
+  // compiled, and the subsequent infix operator consumed.
+  TokenType operatorType = parser.previous.type;
+
+  // Binary operators are left-associative, so their
+  // right-hand operand precedence is one level higher
+  // than its own.
+  ParseRule* rule = getRule(operatorType);
+  parsePrecedence((Precedence)(rule->precedence + 1));
+
+  switch (operatorType) {
+    case TOKEN_PLUS:  emitByte(OP_ADD); break;
+    case TOKEN_MINUS: emitByte(OP_SUBTRACT); break;
+    case TOKEN_STAR:  emitByte(OP_MULTIPLY); break;
+    case TOKEN_SLASH: emitByte(OP_DIVIDE); break;
+    default: return; // Unreachable.
+  }
+}
+
 // Parse and compile parenthesised grouping expressions.
 static void grouping() {
   // Assume the initial '(' has already been consumed.
@@ -151,8 +202,9 @@ static void unary() {
   // Assume the unary operator token has already been parsed.
   TokenType operatorType = parser.previous.type;
 
-  // Compile the operand.
-  expression();
+  // Compile the operand. Note parsing at unary
+  // precedence allows nested unary expressions.
+  parsePrecedence(PREC_UNARY);
 
   // Emit the operator instruction.
   // Note that we add this after the operand,
@@ -165,8 +217,92 @@ static void unary() {
   }
 }
 
+// All our parsing rules. The RHS is a ParseRule
+// enum {prefix, infix, precedence}. A prefix/infix of
+// NULL means there is no expression using that token
+// as a prefix/infix operator.
+// NOTE: this is a WIP and will be filled out as I
+// implement more of clox.
+ParseRule rules[] = {
+  // Note that tokens are listed in the same order
+  // as the TokenType enum, for easy lookup.
+  [TOKEN_LEFT_PAREN]    = {grouping, NULL,   PREC_NONE},
+  [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_COMMA]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_DOT]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_MINUS]         = {unary,    binary, PREC_TERM},
+  [TOKEN_PLUS]          = {NULL,     binary, PREC_TERM},
+  [TOKEN_SEMICOLON]     = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_SLASH]         = {NULL,     binary, PREC_FACTOR},
+  [TOKEN_STAR]          = {NULL,     binary, PREC_FACTOR},
+  [TOKEN_BANG]          = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_BANG_EQUAL]    = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_EQUAL]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_EQUAL_EQUAL]   = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_GREATER]       = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_GREATER_EQUAL] = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_LESS]          = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_LESS_EQUAL]    = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_IDENTIFIER]    = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_STRING]        = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
+  [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_FALSE]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_FOR]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_IF]            = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_NIL]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_OR]            = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_THIS]          = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_TRUE]          = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_ERROR]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_EOF]           = {NULL,     NULL,   PREC_NONE},
+};
+
+// Starting from the current token, parse any
+// expression >= the given precedence level.
+static void parsePrecedence(Precedence precedence) {
+  advance();
+
+  // The first token in an expression is always part of a prefix expression.
+  ParseFn prefixRule = getRule(parser.previous.type)->prefix;
+  if (prefixRule == NULL) {
+    error("Expect expression.");
+    return;
+  }
+  prefixRule();
+
+  // Check if the next token is an infix operator. If it is,
+  // and precedence is low enough, keep parsing through until
+  // we get to the end of the expression.
+  // Otherwise, we've reached the end of this expression.
+  while (precedence <= getRule(parser.current.type)->precedence) {
+    advance();
+    ParseFn infixRule = getRule(parser.previous.type)->infix;
+    infixRule();
+  }
+}
+
+// Simple getter retrieving the parse rule for
+// the given token type.
+static ParseRule* getRule(TokenType type) {
+  return &rules[type];
+}
+
+// Compiles the next Lox expression in the chunk.
 static void expression() {
-  // Will compile Lox expressions.
+  // Parsing the lowest precedence level
+  // will parse all expressions.
+  parsePrecedence(PREC_ASSIGNMENT);
 }
 
 void compile(const char* source, Chunk* chunk) {
