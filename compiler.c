@@ -133,10 +133,36 @@ static void endCompiler() {
   emitReturn();
 }
 
+// Parse and compile parenthesised grouping expressions.
+static void grouping() {
+  // Assume the initial '(' has already been consumed.
+  expression();
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
+}
+
 // Compile a number literal.
 static void number() {
   double value = strtod(parser.previous.start, NULL);
   emitConstant(value);
+}
+
+// Compile a unary operator and its operand.
+static void unary() {
+  // Assume the unary operator token has already been parsed.
+  TokenType operatorType = parser.previous.type;
+
+  // Compile the operand.
+  expression();
+
+  // Emit the operator instruction.
+  // Note that we add this after the operand,
+  // because we want to evaluate the operand first,
+  // pop it from the stack, apply the
+  // unary operator, then push the result.
+  switch (operatorType) {
+    case TOKEN_MINUS: emitByte(OP_NEGATE); break;
+    default: return; // Unreachable.
+  }
 }
 
 static void expression() {
