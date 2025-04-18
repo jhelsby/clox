@@ -13,7 +13,7 @@ void initChunk(Chunk* chunk) {
 
 // Append a byte to our chunk, storing its line number
 // for error reporting.
-// 
+//
 // Standard append implementation for a dynamic array.
 void writeChunk(Chunk* chunk, uint8_t byte, int line) {
     // Check if array is full.
@@ -52,7 +52,7 @@ void freeChunk(Chunk* chunk) {
     initChunk(chunk);
 }
 
-// Add a new constant to the chunk's value pool.
+// Add a new constant to the chunk's constant pool.
 // Returns the index the constant was stored at.
 int addConstant(Chunk* chunk, Value value) {
     writeValueArray(&chunk->constants, value);

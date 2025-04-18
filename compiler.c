@@ -107,10 +107,40 @@ static void emitReturn() {
   emitByte(OP_RETURN);
 }
 
+// Add a value to the chunk's constant table. Return
+// an error if there's insufficient space in the chunk.
+static uint8_t makeConstant(Value value) {
+  int constant = addConstant(currentChunk(), value);
+  // We use a single byte for the index operand,
+  // meaning only <= 256 constants per chunk.
+  // We could adapt this to use two or more bytes.
+  if (constant > UINT8_MAX) {
+    error("Too many constants in one chunk.");
+    return 0;
+  }
+
+  return (uint8_t)constant;
+}
+
+// Append a constant to the chunk.
+static void emitConstant(Value value) {
+  emitBytes(OP_CONSTANT, makeConstant(value));
+}
+
 // Completes a compiled chunk by adding
 // a return instruction at the end.
 static void endCompiler() {
   emitReturn();
+}
+
+// Compile a number literal.
+static void number() {
+  double value = strtod(parser.previous.start, NULL);
+  emitConstant(value);
+}
+
+static void expression() {
+  // Will compile Lox expressions.
 }
 
 void compile(const char* source, Chunk* chunk) {

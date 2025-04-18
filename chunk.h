@@ -12,7 +12,7 @@
 // Each bytecode instruction has a one-byte
 // operation code which controls its behaviour.
 typedef enum {
-    // Load a constant from the chunk value pool.
+    // Load a constant from the chunk constant pool.
     // Use an operand to specify which constant.
     OP_CONSTANT,
 
@@ -42,7 +42,7 @@ typedef struct {
     // instruction, for error reporting.
     int* lines;
 
-    // Store chunk constants in a value pool.
+    // Store chunk constants in a constant pool.
     ValueArray constants;
 } Chunk;
 
@@ -56,7 +56,7 @@ void writeChunk(Chunk* chunk, uint8_t byte, int line);
 void freeChunk(Chunk* chunk);
 
 // Convenience function to add a new
-// constant to the chunk's value pool.
+// constant to the chunk's constant pool.
 int addConstant(Chunk*, Value value);
 
 #endif

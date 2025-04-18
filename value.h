@@ -1,4 +1,4 @@
-// To store values in a chunk in clox, we use a value pool.
+// To store values in a chunk in clox, we use a constant pool (or "constant table").
 // Each chunk stores values in a "constants" array separate
 // to its instructions. To reference a value, we point to
 // the appropriate offset in this array.
