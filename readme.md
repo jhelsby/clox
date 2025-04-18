@@ -35,7 +35,7 @@ I will expand on this as my implementation develops.
 
 #### Compiler
 
-* TBC.
+* Parses using a Pratt parser. Implemented in [`compiler.c`](./compiler.c).
 
 #### VM
 
