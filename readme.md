@@ -5,9 +5,9 @@ This repository contains my implementation of the _clox_ interpreter described i
 1. a bytecode compiler.
 2. a virtual machine to execute the bytecode instructions, with garbage collection.
 
-_clox_ interprets the programming language _Lox_, designed for the purposes of the book. Lox is a simple, dynamically typed, object-oriented language. Its built-in data types are booleans, numbers, strings, and nil.
+_clox_ interprets the programming language _Lox_, designed for the purposes of the book. Lox is a simple, dynamically typed, object-oriented language. Its built-in data types are booleans, numbers, strings, and nil. My interpreter is a work-in-progress, but I aim to complete the book's implementation as soon as possible. I am adding my own comprehensive comments throughout the codebase, for personal educational purposes.
 
-My interpreter is a work-in-progress, but I aim to complete the book's implementation as soon as possible. I also intend to add my own comprehensive comments throughout the codebase, for personal educational purposes. My notes on _jlox_, the book's simpler and less efficient Java-based Lox interpreter, can be found [here](https://github.com/jhelsby/jlox-notes). They cover many of the high-level concepts used in _clox_.
+My notes on _jlox_, the book's simpler and less efficient Java-based Lox interpreter, can be found [here](https://github.com/jhelsby/jlox-notes). They cover many of the high-level concepts used in _clox_.
 
 ## Setup and Run
 
