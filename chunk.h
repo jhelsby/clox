@@ -16,6 +16,11 @@ typedef enum {
     // Use an operand to specify which constant.
     OP_CONSTANT,
 
+    // Define dedicated one-byte instructions for these common literals.
+    OP_NIL,
+    OP_TRUE,
+    OP_FALSE,
+
     // Standard binary arithmetic operators.
     OP_ADD,
     OP_SUBTRACT,

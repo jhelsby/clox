@@ -41,6 +41,11 @@ void freeValueArray(ValueArray* array) {
 
 // Print the value of the given constant.
 void printValue(Value value) {
-    // This will get more complex once we add more types!
-    printf("%g", AS_NUMBER(value));
+    switch (value.type) {
+        case VAL_BOOL:
+          printf(AS_BOOL(value) ? "true" : "false");
+          break;
+        case VAL_NIL: printf("nil"); break;
+        case VAL_NUMBER: printf("%g", AS_NUMBER(value)); break;
+    }
 }
