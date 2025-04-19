@@ -27,6 +27,9 @@ typedef enum {
     OP_MULTIPLY,
     OP_DIVIDE,
 
+    // Perform the logical not operation !b on a boolean b.
+    OP_NOT,
+
     // Perform the operation -(x) on a number x.
     OP_NEGATE,
 

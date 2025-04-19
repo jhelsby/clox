@@ -62,6 +62,11 @@ static Value peek(int distance) {
     return vm.stackTop[-1 - distance];
 }
 
+// In Lox, nil and false are falsey and everything else is truthy.
+static bool isFalsey(Value value) {
+    return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
+}
+
 // Decode and execute each instruction in the VM.
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
@@ -127,6 +132,9 @@ static InterpretResult run() {
             case OP_ADD:      BINARY_OP(NUMBER_VAL, +); break;
             case OP_SUBTRACT: BINARY_OP(NUMBER_VAL, -); break;
             case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, *); break;
+            case OP_NOT:
+            push(BOOL_VAL(isFalsey(pop())));
+            break;
             case OP_DIVIDE:   BINARY_OP(NUMBER_VAL, /); break;
 
             // If the top of the stack is a number, negate it.
