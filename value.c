@@ -42,5 +42,5 @@ void freeValueArray(ValueArray* array) {
 // Print the value of the given constant.
 void printValue(Value value) {
     // This will get more complex once we add more types!
-    printf("%g", value);
+    printf("%g", AS_NUMBER(value));
 }

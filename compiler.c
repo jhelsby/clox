@@ -202,7 +202,7 @@ static void grouping() {
 // Compile a number literal.
 static void number() {
   double value = strtod(parser.previous.start, NULL);
-  emitConstant(value);
+  emitConstant(NUMBER_VAL(value));
 }
 
 // Compile a unary operator and its operand.
