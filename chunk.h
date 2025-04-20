@@ -21,6 +21,11 @@ typedef enum {
     OP_TRUE,
     OP_FALSE,
 
+    // Operators that return booleans.
+    OP_EQUAL,
+    OP_GREATER,
+    OP_LESS,
+
     // Standard binary arithmetic operators.
     OP_ADD,
     OP_SUBTRACT,
