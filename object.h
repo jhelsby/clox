@@ -54,6 +54,10 @@ struct ObjString {
     char* chars;
 };
 
+// Copy the given characters into a heap-allocated,
+// string object. Null-terminate the string and return it.
+ObjString* copyString(const char* chars, int length);
+
 // Used for the OBJ_TYPE macro. We set this as a separate function
 // because its body uses value twice. If value were
 // an expression, the macro would evaluate that expression twice.

@@ -6,12 +6,16 @@
 
 #include "common.h"
 
+// Allocate an array with the given element type and count.
+#define ALLOCATE(type, count) \
+    (type*)reallocate(NULL, 0, sizeof(type) * (count))
+
 // Set dynamic array capacity. If current capacity
 // is zero, set it to eight. Otherwise, double it.
 #define GROW_CAPACITY(capacity) \
     ((capacity < 8 ? 8 : (capacity) * 2))
 
-// Allocates dynamic array memory based on 
+// Allocates dynamic array memory based on
 // its type, contents, and desired new size.
 #define GROW_ARRAY(type, pointer, oldCount, newCount) \
     (type*)reallocate(pointer, sizeof(type) * (oldCount), \

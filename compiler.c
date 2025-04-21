@@ -227,6 +227,14 @@ static void number() {
   emitConstant(NUMBER_VAL(value));
 }
 
+// Assuming a string token has hit, copy the lexeme providing
+// the string's characters into a new string object.
+static void string() {
+  // The +1 and -2 parts are trimming the string's quotation marks.
+  emitConstant(OBJ_VAL(copyString(parser.previous.start + 1,
+                                  parser.previous.length - 2)));
+}
+
 // Compile a unary operator and its operand.
 static void unary() {
   // Assume the unary operator token has already been parsed.
@@ -277,7 +285,7 @@ ParseRule rules[] = {
   [TOKEN_LESS]          = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_LESS_EQUAL]    = {NULL,     binary, PREC_COMPARISON},
   [TOKEN_IDENTIFIER]    = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_STRING]        = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
   [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
   [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
