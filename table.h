@@ -24,6 +24,11 @@ typedef struct {
 void initTable(Table* table);
 void freeTable(Table* table);
 
+// If the given key is in the given table, make the value
+// output parameter point to its value, and return true.
+// Otherwise, return false.
+bool tableGet(Table* table, ObjString* key, Value* value);
+
 // Add a given key-value pair to the given table.
 // Overwrite any existing pairs. Return true
 // if a new entry was added and false otherwise.

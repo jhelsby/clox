@@ -46,6 +46,19 @@ static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
     }
 }
 
+// If the given key is in the given table, make the value
+// output parameter point to its value, and return true.
+// Otherwise, return false.
+bool tableGet(Table* table, ObjString* key, Value* value) {
+    if (table->count == 0) return false;
+
+    Entry* entry = findEntry(table->entries, table->capacity, key);
+    if (entry->key == NULL) return false;
+
+    *value = entry->value;
+    return true;
+}
+
 // Adjust the size of our table. On init, we
 // allocate each entry of our table with null values.
 // For subsequent adjustments, we must allocate new
