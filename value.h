@@ -12,11 +12,21 @@
 
 #include "common.h"
 
+// Stores heap-allocated value representations.
+// Defined in object.h, but declared here to avoid
+// cyclic dependencies between values and objects.
+typedef struct Obj Obj;
+// All object types.
+typedef struct ObjString ObjString;
+// More will be added here.
+
 // Store all value types supported by the VM.
 typedef enum {
     VAL_BOOL,
     VAL_NIL,
     VAL_NUMBER,
+    // Store heap-allocated types.
+    VAL_OBJ
 } ValueType;
 
 // Store a value representation as a tagged union.
@@ -30,8 +40,11 @@ typedef struct {
 
     // Store the value of the variable here.
     union {
-      bool boolean;
-      double number;
+        bool boolean;
+        double number;
+        // For heap-allocated types, the
+        // payload is a pointer to heap memory.
+        Obj* obj;
     } as; // Calling it "as" looks nice when we
           // extract values from Value - see below.
 } Value;
@@ -40,15 +53,18 @@ typedef struct {
 #define IS_BOOL(value)    ((value).type == VAL_BOOL)
 #define IS_NIL(value)     ((value).type == VAL_NIL)
 #define IS_NUMBER(value)  ((value).type == VAL_NUMBER)
+#define IS_OBJ(value)     ((value).type == VAL_OBJ)
 
 // Convert a Value type into a C value.
 #define AS_BOOL(value)    ((value).as.boolean)
 #define AS_NUMBER(value)  ((value).as.number)
+#define AS_OBJ(value)     ((value).as.obj)
 
 // Convert C values into the suitable Value type.
 #define BOOL_VAL(value)   ((Value){VAL_BOOL, {.boolean = value}})
 #define NIL_VAL           ((Value){VAL_NIL, {.number = 0}})
 #define NUMBER_VAL(value) ((Value){VAL_NUMBER, {.number = value}})
+#define OBJ_VAL(object)   ((Value){VAL_OBJ, {.obj = (Obj*)object}})
 
 typedef struct {
     int capacity;
