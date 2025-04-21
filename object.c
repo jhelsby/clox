@@ -23,26 +23,43 @@ static Obj* allocateObject(size_t size, ObjType type) {
     }
 
 // Create a new ObjString on the heap, and initialise it.
-static ObjString* allocateString(char* chars, int length) {
+static ObjString* allocateString(char* chars, int length, uint32_t hash) {
     ObjString* string = ALLOCATE_OBJ(ObjString, OBJ_STRING);
     string->length = length;
     string->chars = chars;
+    string->hash = hash;
     return string;
+}
+
+// Implementation of the hash function FNV-1a.
+static uint32_t hashString(const char* key, int length) {
+    uint32_t hash = 2166136261u;
+    for (int i = 0; i < length; i++) {
+        hash ^= (uint8_t)key[i];
+        hash *= 16777619;
+    }
+    return hash;
 }
 
 // Claim ownership of the input C-string (reusing its memory)
 // and convert it to an ObjString.
 ObjString* takeString(char* chars, int length) {
-    return allocateString(chars, length);
+    // We hash the string on init.
+    uint32_t hash = hashString(chars, length);
+
+    return allocateString(chars, length, hash);
 }
 
 // Copy the given characters into a heap-allocated,
 // string object. Null-terminate the string and return it.
 ObjString* copyString(const char* chars, int length) {
-  char* heapChars = ALLOCATE(char, length + 1);
-  memcpy(heapChars, chars, length);
-  heapChars[length] = '\0';
-  return allocateString(heapChars, length);
+    // We hash the string on init.
+    uint32_t hash = hashString(chars, length);
+
+    char* heapChars = ALLOCATE(char, length + 1);
+    memcpy(heapChars, chars, length);
+    heapChars[length] = '\0';
+    return allocateString(heapChars, length, hash);
 }
 
 // Prints a string representation of an object.

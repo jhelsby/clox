@@ -57,9 +57,15 @@ struct ObjString {
     // This allows us to cast pointers back and forth
     // between them.
     Obj obj;
+
     // Length isn't strictly necessary, but is convenient.
     int length;
+
+    // Store the string characters.
     char* chars;
+
+    // Cache the hash of the string on initialisation.
+    uint32_t hash;
 };
 
 // Claim ownership of the input C-string (reusing its memory)

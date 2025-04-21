@@ -1,0 +1,36 @@
+// Standard hash table implementation using
+// hash function FNV-1a and linear probing.
+
+#ifndef clox_table_h
+#define clox_table_h
+
+#include "common.h"
+#include "value.h"
+
+// Hash table entries consist of a Lox string
+// object as the key, and a Lox value as the value.
+typedef struct {
+    ObjString* key;
+    Value value;
+} Entry;
+
+// Store the entries plus standard hash table metadata.
+typedef struct {
+    int count;
+    int capacity;
+    Entry* entries;
+} Table;
+
+void initTable(Table* table);
+void freeTable(Table* table);
+
+// Add a given key-value pair to the given table.
+// Overwrite any existing pairs. Return true
+// if a new entry was added and false otherwise.
+bool tableSet(Table* table, ObjString* key, Value value);
+
+// Copy all entries from one table to another.
+// Used for method inheritance later.
+void tableAddAll(Table* from, Table* to);
+
+#endif
