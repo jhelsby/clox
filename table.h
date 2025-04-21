@@ -34,6 +34,10 @@ bool tableGet(Table* table, ObjString* key, Value* value);
 // if a new entry was added and false otherwise.
 bool tableSet(Table* table, ObjString* key, Value value);
 
+// If the given key is in the given table, delete the
+// key-value pair and return true. Otherwise, return false.
+bool tableDelete(Table* table, ObjString* key);
+
 // Copy all entries from one table to another.
 // Used for method inheritance later.
 void tableAddAll(Table* from, Table* to);
