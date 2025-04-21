@@ -25,6 +25,12 @@ static ObjString* allocateString(char* chars, int length) {
     return string;
 }
 
+// Claim ownership of the input C-string (reusing its memory)
+// and convert it to an ObjString.
+ObjString* takeString(char* chars, int length) {
+    return allocateString(chars, length);
+}
+
 // Copy the given characters into a heap-allocated,
 // string object. Null-terminate the string and return it.
 ObjString* copyString(const char* chars, int length) {

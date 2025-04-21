@@ -1,9 +1,12 @@
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "common.h"
 #include "compiler.h"
 #include "debug.h"
+#include "object.h"
+#include "memory.h"
 #include "vm.h"
 
 // Use a global variable (!?) to access the VM.
@@ -65,6 +68,26 @@ static Value peek(int distance) {
 // In Lox, nil and false are falsey and everything else is truthy.
 static bool isFalsey(Value value) {
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
+}
+
+// Concatenate two strings, assuming the top two frames
+// on the stack are ObjStrings.
+static void concatenate() {
+    ObjString* b = AS_STRING(pop());
+    ObjString* a = AS_STRING(pop());
+
+    int length = a->length + b->length;
+    char* chars = ALLOCATE(char, length + 1);
+    memcpy(chars, a->chars, a->length);
+    memcpy(chars + a->length, b->chars, b->length);
+    chars[length] = '\0';
+
+    // Reuse the chars C-string array we heap allocated
+    // to output the ObjString result. This avoids having
+    // to make another copy and free chars.
+    ObjString* result = takeString(chars, length);
+
+    push(OBJ_VAL(result));
 }
 
 // Decode and execute each instruction in the VM.
@@ -139,7 +162,21 @@ static InterpretResult run() {
             // Binary operators.
             case OP_GREATER:  BINARY_OP(BOOL_VAL, >); break;
             case OP_LESS:     BINARY_OP(BOOL_VAL, <); break;
-            case OP_ADD:      BINARY_OP(NUMBER_VAL, +); break;
+            // Concatenate two strings, or add two numbers.
+            case OP_ADD: {
+                if (IS_STRING(peek(0)) && IS_STRING(peek(1))) {
+                    concatenate();
+                } else if (IS_NUMBER(peek(0)) && IS_NUMBER(peek(1))) {
+                    double b = AS_NUMBER(pop());
+                    double a = AS_NUMBER(pop());
+                    push(NUMBER_VAL(a + b));
+                } else {
+                    runtimeError(
+                      "Operands must be two numbers or two strings.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
             case OP_SUBTRACT: BINARY_OP(NUMBER_VAL, -); break;
             case OP_MULTIPLY: BINARY_OP(NUMBER_VAL, *); break;
             case OP_NOT:
