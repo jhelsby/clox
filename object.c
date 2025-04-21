@@ -33,3 +33,14 @@ ObjString* copyString(const char* chars, int length) {
   heapChars[length] = '\0';
   return allocateString(heapChars, length);
 }
+
+// Prints a string representation of an object.
+void printObject(Value value) {
+    switch (OBJ_TYPE(value)) {
+        case OBJ_STRING:
+            // Print the characters in the string.
+            printf("%s", AS_CSTRING(value));
+            break;
+        // Will add more cases.
+    }
+}

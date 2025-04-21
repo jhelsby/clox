@@ -58,6 +58,9 @@ struct ObjString {
 // string object. Null-terminate the string and return it.
 ObjString* copyString(const char* chars, int length);
 
+// Prints a string representation of an object.
+void printObject(Value value);
+
 // Used for the OBJ_TYPE macro. We set this as a separate function
 // because its body uses value twice. If value were
 // an expression, the macro would evaluate that expression twice.
