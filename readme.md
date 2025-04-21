@@ -41,6 +41,8 @@ I will expand on this as my implementation develops.
 
 * Temporary variables are stored on a simple stack, implemented in [`vm.c`](./vm.c).
 
+* All heap-allocated values are of type Obj, implemented in the [`object.c`](./object.c) module. We store all allocated Objs in a linked list in the VM, for simple garbage collection.
+
 ### Miscellaneous points
 
 * Each type of dynamic array we use in _clox_ requires its own nearly-identical struct, init, write, and free functions. This isn't very elegant, but we don't need many of them. We could avoid repetition by simulating generics using preprocessor macros, but this would likely prove even more complicated.
