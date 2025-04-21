@@ -14,6 +14,11 @@
 static Obj* allocateObject(size_t size, ObjType type) {
     Obj* object = (Obj*)reallocate(NULL, 0, size);
     object->type = type;
+
+    // Each time we allocate an Obj, we insert it at the
+    // head of our VM's linked list of allocated objects.
+    object->next = vm.objects;
+    vm.objects = object;
     return object;
     }
 

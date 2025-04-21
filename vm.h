@@ -21,6 +21,8 @@ typedef struct {
     // Stack pointer. Points to where the next value
     // will go. An empty stack has stackTop = 0.
     Value* stackTop;
+    // Head of our linked list of allocated Objs. For GC.
+    Obj* objects;
 } VM;
 
 // Used to set the exit code of a process
@@ -30,6 +32,10 @@ typedef enum {
     INTERPRET_COMPILE_ERROR,
     INTERPRET_RUNTIME_ERROR
 } InterpretResult;
+
+// Allow object module to access the VM so it can store
+// its list of allocated objects in the VM, for GC.
+extern VM vm;
 
 void initVM();
 void freeVM();

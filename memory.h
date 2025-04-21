@@ -5,10 +5,16 @@
 #define clox_memory_h
 
 #include "common.h"
+#include "object.h"
 
 // Allocate an array with the given element type and count.
 #define ALLOCATE(type, count) \
     (type*)reallocate(NULL, 0, sizeof(type) * (count))
+
+// Free an array. We use reallocate to do this instead of free()
+// because we'll add a running count of allocated bytes
+// via reallocate later.
+#define FREE(type, pointer) reallocate(pointer, sizeof(type), 0)
 
 // Set dynamic array capacity. If current capacity
 // is zero, set it to eight. Otherwise, double it.
@@ -28,5 +34,8 @@
 // Single function used for all dynamic memory management
 // in clox -  allocation, freeing, and reallocation.
 void* reallocate(void* pointer, size_t oldSize, size_t newSize);
+
+// Free all allocated objects.
+void freeObjects();
 
 #endif

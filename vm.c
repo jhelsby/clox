@@ -24,6 +24,8 @@ static void resetStack() {
 
 void initVM() {
     resetStack();
+    // Initially, no allocated objects.
+    vm.objects = NULL;
 }
 
 // Call runtime errors with informative error reporting,
@@ -42,6 +44,8 @@ static void runtimeError(const char* format, ...) {
 }
 
 void freeVM() {
+    // Free all allocated objects when a program terminates.
+    freeObjects();
 }
 
 // Push onto the value stack.

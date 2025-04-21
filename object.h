@@ -1,8 +1,12 @@
 // Stores heap-allocated values in a single Obj type.
-// Uses "struct inheritance" - a common technique whose
-// term is coined by Nystrom - to ensure Obj values with
-// different type tags (e.g. strings, functions, etc.) and
-// distinct memory requirements can be handled correctly.
+// Each Obj is a node in a linked list of all allocated Objs,
+// for simple garbage collection.
+//
+// This implementation uses "struct inheritance" - a common
+// technique whose term is coined by Nystrom - so Obj values
+// can share common metadata fields but implement
+// distinct memory requirements for different type tags
+// (e.g. strings, functions, etc.).
 // For more information, see:
 // https://craftinginterpreters.com/strings.html#struct-inheritance
 
@@ -37,6 +41,10 @@ typedef enum {
 // garbage collection implementation.
 struct Obj {
     ObjType type;
+    // For our GC to track all allocated objects,
+    // each Obj is a node in a linked list of Objs.
+    // It tracks th
+    struct Obj* next;
 };
 
 // Standard implementation. A string object contains
