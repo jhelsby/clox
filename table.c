@@ -49,10 +49,12 @@ static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
         Entry* entry = &entries[index];
         if (entry->key == NULL) {
             if (IS_NIL(entry->value)) {
-              // Empty entry.
+              // Empty entry. If we've stored a tombstone,
+              // return it. Otherwise, return the entry.
               return tombstone != NULL ? tombstone : entry;
             } else {
-              // We found a tombstone.
+              // We found a tombstone. Store the first
+              // we find.
               if (tombstone == NULL) tombstone = entry;
             }
           } else if (entry->key == key) {
