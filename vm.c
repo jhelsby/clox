@@ -170,6 +170,26 @@ static InterpretResult run() {
             // Pop the top value of the stack and forget it.
             case OP_POP: pop(); break;
 
+            // Load a global variable. The instruction's operand is the
+            // index of the variable's name in the chunk's constant table.
+            case OP_GET_GLOBAL: {
+                // Read the operand string.
+                ObjString* name = READ_STRING();
+                Value value;
+
+                // If the variable name isn't in the table, it was never
+                // defined. This is a runtime error.
+                if (!tableGet(&vm.globals, name, &value)) {
+                    runtimeError("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                // Otherwise, we've just stored the variable's
+                // value in value. Add it to the stack.
+                push(value);
+                break;
+            }
+
             // Define a global variable. The instruction's operand
             // is the index of the variable's name in the chunk's constant
             // table. We get the variable's name from the constant
