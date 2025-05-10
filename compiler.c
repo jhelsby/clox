@@ -379,10 +379,48 @@ static void printStatement() {
   emitByte(OP_PRINT);
 }
 
+// Hitting a compile error puts the compiler into panic mode.
+// We want to exit this when we reach a synchronisation point,
+// so we can continue parsing the rest of the source file
+// and identify any further errors. Lox uses statement
+// boundaries as its synchronisation points.
+static void synchronize() {
+  parser.panicMode = false;
+
+  // Skip tokens until we hit a statement boundary.
+  while (parser.current.type != TOKEN_EOF) {
+    // A semicolon indicates the end of a statement.
+    if (parser.previous.type == TOKEN_SEMICOLON) return;
+
+    // These tokens indicate the beginning of a statement.
+    switch (parser.current.type) {
+      case TOKEN_CLASS:
+      case TOKEN_FUN:
+      case TOKEN_VAR:
+      case TOKEN_FOR:
+      case TOKEN_IF:
+      case TOKEN_WHILE:
+      case TOKEN_PRINT:
+      case TOKEN_RETURN:
+        return;
+
+      default:
+        ; // Do nothing.
+    }
+
+    advance();
+  }
+}
+
 // Will parse all declarations:
 // classDecl, funDecl, varDecl, and statement.
 static void declaration() {
   statement();
+
+  // If the last statement gave a compile error, we
+  // will now be in panic mode. Exit this once
+  // we've reached a synchronisation point.
+  if (parser.panicMode) synchronize();
 }
 
 // Will parse all statements:
