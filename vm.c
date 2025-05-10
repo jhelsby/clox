@@ -27,7 +27,8 @@ void initVM() {
     // Initially, no allocated objects.
     vm.objects = NULL;
 
-    // No stored strings on VM init.
+    // Initialise hash tables for chunk global variables and strings.
+    initTable(&vm.globals);
     initTable(&vm.strings);
 }
 
@@ -47,6 +48,7 @@ static void runtimeError(const char* format, ...) {
 }
 
 void freeVM() {
+    freeTable(&vm.globals);
     freeTable(&vm.strings);
 
     // Free all allocated objects when a program terminates.
@@ -103,7 +105,12 @@ static void concatenate() {
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
 
+// Read a constant operand.
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
+
+// Read a string operand. Note this is a one-byte value
+// which gets the given string from the chunk's constant table.
+#define READ_STRING() AS_STRING(READ_CONSTANT())
 
 // This macro simplifies binary operations,
 // especially for type checking.
@@ -163,6 +170,22 @@ static InterpretResult run() {
             // Pop the top value of the stack and forget it.
             case OP_POP: pop(); break;
 
+            // Define a global variable. The instruction's operand
+            // is the index of the variable's name in the chunk's constant
+            // table. We get the variable's name from the constant
+            // table, and store its (name, value) pair in the hash table.
+            case OP_DEFINE_GLOBAL: {
+                // Read the operand string.
+                ObjString* name = READ_STRING();
+
+                // Store (name, value) in the table.
+                tableSet(&vm.globals, name, peek(0));
+
+                // Now it's stored, remove it from the stack.
+                pop();
+                break;
+            }
+
             // Equal can be evaluated on any pair of objects.
             case OP_EQUAL: {
                 Value b = pop();
@@ -221,6 +244,7 @@ static InterpretResult run() {
 
 #undef READ_BYTE
 #undef READ_CONSTANT
+#undef READ_STRING
 #undef BINARY_OP
 }
 

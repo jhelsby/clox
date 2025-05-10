@@ -190,6 +190,29 @@ static void declaration();
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 
+// Add the given token's lexeme to the chunk's
+// constant table as a string, and return the
+// index of the constant in the table. We use
+// the index as it is easier to include
+// in the bytecode stream on variable lookup.
+static uint8_t identifierConstant(Token* name) {
+  return makeConstant(OBJ_VAL(copyString(name->start,
+                                         name->length)));
+}
+
+// Parse a variable and store it in the chunk's constant
+// table. Return the index of the constant in the table.
+static uint8_t parseVariable(const char* errorMessage) {
+  consume(TOKEN_IDENTIFIER, errorMessage);
+  return identifierConstant(&parser.previous);
+}
+
+// Output's the "define variable" bytecode instruction
+// and stores the initial value, using the constant table.
+static void defineVariable(uint8_t global) {
+  emitBytes(OP_DEFINE_GLOBAL, global);
+}
+
 // Compile a binary expression, with an infix operator.
 static void binary() {
   // Assume the left-hand operand expression has already been
@@ -363,6 +386,28 @@ static void expression() {
   parsePrecedence(PREC_ASSIGNMENT);
 }
 
+// Parse a variable declaration.
+// For now, we only handle global variables.
+static void varDeclaration() {
+  // Extract the variable name and add it to the chunk's
+  // constant table as a string. global will be the
+  // index of the constant in the constant table.
+  uint8_t global = parseVariable("Expect variable name.");
+
+  // If we have var a = someExpr, parse someExpr.
+  if (match(TOKEN_EQUAL)) {
+    expression();
+  } else {
+    // Treat var a as var a = nil
+    emitByte(OP_NIL);
+  }
+  consume(TOKEN_SEMICOLON,
+          "Expect ';' after variable declaration.");
+
+  // Store the variable's value.
+  defineVariable(global);
+}
+
 // Parse an expression statement - an expression
 // followed by a semicolon. It evalautes the
 // expression and discards the result.
@@ -412,10 +457,14 @@ static void synchronize() {
   }
 }
 
-// Will parse all declarations:
+// Will eventually parse all declarations:
 // classDecl, funDecl, varDecl, and statement.
 static void declaration() {
-  statement();
+  if (match(TOKEN_VAR)) {
+    varDeclaration();
+  } else {
+    statement();
+  }
 
   // If the last statement gave a compile error, we
   // will now be in panic mode. Exit this once
@@ -423,7 +472,7 @@ static void declaration() {
   if (parser.panicMode) synchronize();
 }
 
-// Will parse all statements:
+// Will eventually parse all statements:
 // exprStmt, forStmt, ifStmt, printStmt,
 // returnStmt, whileStmt, and block.
 static void statement() {

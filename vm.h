@@ -24,6 +24,9 @@ typedef struct {
     // will go. An empty stack has stackTop = 0.
     Value* stackTop;
 
+    // Store global variables in (name, value) form, in a hash table.
+    Table globals;
+
     // For string interning. We never store duplicate
     // strings - if two strings are equal, deduplicate so
     // we can refer to both using the same memory address.
