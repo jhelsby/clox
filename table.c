@@ -1,5 +1,7 @@
 // Standard hash table implementation using
 // hash function FNV-1a and linear probing.
+// Only accepts keys that are strings, since
+// we don't need other types for clox.
 // Deletion uses tombstones. For more details, see:
 // https://craftinginterpreters.com/hash-tables.html#deleting-entries
 

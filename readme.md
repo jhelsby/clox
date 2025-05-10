@@ -50,3 +50,7 @@ I will expand on this as my implementation develops.
 * `OP_CONSTANT` uses only a single byte for its operand, limiting a chunk to 256 different constants. This could be addressed by making it use more bytes (which would make every constant instruction take up more space), or by adding a new `OP_CONSTANT_LONG` instruction for this special case.
 
 * Our VM has a fixed stack size. We could grow this dynamically for more flexibility.
+
+* Our hash table in [table.c](./table.c) only accepts string key values. We don't need to hash other types to implement clox.
+
+* Our VM uses string interning - we don't store duplicate strings in memory. Instead, if you try to create a string which has already been allocated in memory, clox will return the allocated string's memory address. This is a trade-off which adds overhead to string creation in exchange for fast string equality testing. To see if two strings are equal, we can just compare their memory addresses - O(1) - instead of comparing each character between both strings - O(n).
