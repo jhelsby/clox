@@ -38,6 +38,9 @@ typedef enum {
     // Perform the operation -(x) on a number x.
     OP_NEGATE,
 
+    // Evaluate and print an expression.
+    OP_PRINT,
+
     // Return from the current function.
     OP_RETURN,
 } OpCode;

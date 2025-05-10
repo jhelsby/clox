@@ -202,14 +202,15 @@ static InterpretResult run() {
             push(NUMBER_VAL(-AS_NUMBER(pop())));
             break;
 
-            case OP_RETURN: {
-
-                // Temporary, for testing.
-                // Returning a function will pop the stack
-                // and print the first value before exiting.
+            // Pop and print the value on the top of the stack.
+            case OP_PRINT: {
                 printValue(pop());
                 printf("\n");
+                break;
+            }
 
+            case OP_RETURN: {
+                // Exit interpreter.
                 return INTERPRET_OK;
             }
         }

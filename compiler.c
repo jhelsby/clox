@@ -116,6 +116,20 @@ static void consume(TokenType type, const char* message) {
   errorAtCurrent(message);
 }
 
+// Check if the current token has the given type.
+static bool check(TokenType type) {
+  return parser.current.type == type;
+}
+
+// If the current token has the given type,
+// consume the token and return true.
+// Otherwise, return false.
+static bool match(TokenType type) {
+  if (!check(type)) return false;
+  advance();
+  return true;
+}
+
 // Append a byte to the chunk.
 static void emitByte(uint8_t byte) {
   writeChunk(currentChunk(), byte, parser.previous.line);
@@ -165,9 +179,13 @@ static void endCompiler() {
 #endif
 }
 
-// Declare these here so we can reference them in our rules
-// table below, then define them AFTER the table.
+// Declare these here so we can:
+// - reference them in our rules table below, then
+//   define them AFTER the table.
+// - use them recursively.
 static void expression();
+static void statement();
+static void declaration();
 static ParseRule* getRule(TokenType type);
 static void parsePrecedence(Precedence precedence);
 
@@ -344,6 +362,28 @@ static void expression() {
   parsePrecedence(PREC_ASSIGNMENT);
 }
 
+// Evaluate and print an expression.
+static void printStatement() {
+  expression();
+  consume(TOKEN_SEMICOLON, "Expect ';' after value.");
+  emitByte(OP_PRINT);
+}
+
+// Will parse all declarations:
+// classDecl, funDecl, varDecl, and statement.
+static void declaration() {
+  statement();
+}
+
+// Will parse all statements:
+// exprStmt, forStmt, ifStmt, printStmt,
+// returnStmt, whileStmt, and block.
+static void statement() {
+  if (match(TOKEN_PRINT)) {
+    printStatement();
+  }
+}
+
 bool compile(const char* source, Chunk* chunk) {
   initScanner(source);
   compilingChunk = chunk;
@@ -352,8 +392,13 @@ bool compile(const char* source, Chunk* chunk) {
   parser.panicMode = false;
 
   advance();
-  expression();
-  consume(TOKEN_EOF, "Expect end of expression.");
+
+  // Keep compiling declarations until
+  // we hit the end of the source file.
+  while (!match(TOKEN_EOF)) {
+    declaration();
+  }
+
   endCompiler();
 
   // Indicate whether the compilation was successful.
