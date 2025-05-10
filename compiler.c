@@ -183,6 +183,7 @@ static void endCompiler() {
 // - reference them in our rules table below, then
 //   define them AFTER the table.
 // - use them recursively.
+
 static void expression();
 static void statement();
 static void declaration();
@@ -362,6 +363,15 @@ static void expression() {
   parsePrecedence(PREC_ASSIGNMENT);
 }
 
+// Parse an expression statement - an expression
+// followed by a semicolon. It evalautes the
+// expression and discards the result.
+static void expressionStatement() {
+  expression();
+  consume(TOKEN_SEMICOLON, "Expect ';' after expression.");
+  emitByte(OP_POP);
+}
+
 // Evaluate and print an expression.
 static void printStatement() {
   expression();
@@ -381,6 +391,8 @@ static void declaration() {
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
+  } else {
+    expressionStatement();
   }
 }
 

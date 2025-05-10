@@ -21,6 +21,9 @@ typedef enum {
     OP_TRUE,
     OP_FALSE,
 
+    // Pop the top value of the stack and forget it.
+    OP_POP,
+
     // Operators that return booleans.
     OP_EQUAL,
     OP_GREATER,

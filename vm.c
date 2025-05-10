@@ -160,6 +160,9 @@ static InterpretResult run() {
             case OP_TRUE: push(BOOL_VAL(true)); break;
             case OP_FALSE: push(BOOL_VAL(false)); break;
 
+            // Pop the top value of the stack and forget it.
+            case OP_POP: pop(); break;
+
             // Equal can be evaluated on any pair of objects.
             case OP_EQUAL: {
                 Value b = pop();
