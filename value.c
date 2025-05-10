@@ -57,21 +57,16 @@ void printValue(Value value) {
 bool valuesEqual(Value a, Value b) {
     if (a.type != b.type) return false;
     switch (a.type) {
-      case VAL_BOOL:   return AS_BOOL(a) == AS_BOOL(b);
-      case VAL_NIL:    return true;
-      case VAL_NUMBER: return AS_NUMBER(a) == AS_NUMBER(b);
+        case VAL_BOOL:   return AS_BOOL(a) == AS_BOOL(b);
+        case VAL_NIL:    return true;
+        case VAL_NUMBER: return AS_NUMBER(a) == AS_NUMBER(b);
 
-      // Two strings are equal if their characters are the same. We'll add more object equality
-      // conditions later.
-      case VAL_OBJ: {
-        // For now, we'll just walk each string comparing each character.
-        // We'll implement this with hash tables later.
-        ObjString* aString = AS_STRING(a);
-        ObjString* bString = AS_STRING(b);
-        return aString->length == bString->length &&
-            memcmp(aString->chars, bString->chars,
-                   aString->length) == 0;
-      }
-      default:         return false; // Unreachable.
+        // Due to string interning implemented in
+        // table.c, two strings are the same if
+        // their memory addresses are the same.
+        // No need to check each character here.
+        case VAL_OBJ:    return AS_OBJ(a) == AS_OBJ(b);
+
+        default:         return false; // Unreachable.
     }
 }

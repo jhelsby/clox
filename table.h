@@ -42,4 +42,9 @@ bool tableDelete(Table* table, ObjString* key);
 // Used for method inheritance later.
 void tableAddAll(Table* from, Table* to);
 
+// Retrieve a string from our deduplication table.
+// For string interning.
+ObjString* tableFindString(Table* table, const char* chars,
+                           int length, uint32_t hash);
+
 #endif

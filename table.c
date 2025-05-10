@@ -175,4 +175,40 @@ void tableAddAll(Table* from, Table* to) {
             tableSet(to, entry->key, entry->value);
         }
     }
+}
+
+// Check if we have stored the input string
+// in our string interning table.
+ObjString* tableFindString(Table* table, const char* chars,
+                           int length, uint32_t hash) {
+  // If the table is empty, we haven't seen the string before.
+  if (table->count == 0) return NULL;
+
+  // Search through the hash table for the string.
+
+  uint32_t index = hash % table->capacity;
+  for (;;) {
+    Entry* entry = &table->entries[index];
+    // If the hash isn't in the table,
+    // we haven't seen the string before.
+    if (entry->key == NULL) {
+      // Stop if we find an empty non-tombstone entry.
+      if (IS_NIL(entry->value)) return NULL;
+
+      // In case of a hash collision,
+      // if the strings are different lengths,
+      // or the hashes are different,
+      // the strings aren't the same - no need
+      // to compare all characters of the string.
+      // If all characters of the strings
+      // are the same, we have seen this string before.
+    } else if (entry->key->length == length &&
+        entry->key->hash == hash &&
+        memcmp(entry->key->chars, chars, length) == 0) {
+      // We found it.
+      return entry->key;
+    }
+
+    index = (index + 1) % table->capacity;
   }
+}

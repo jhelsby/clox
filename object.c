@@ -4,6 +4,7 @@
 
 #include "memory.h"
 #include "object.h"
+#include "table.h"
 #include "value.h"
 #include "vm.h"
 
@@ -28,6 +29,11 @@ static ObjString* allocateString(char* chars, int length, uint32_t hash) {
     string->length = length;
     string->chars = chars;
     string->hash = hash;
+
+    // Whenever we create a new unique string,
+    // add it to our string table for deduplication.
+    tableSet(&vm.strings, string, NIL_VAL);
+
     return string;
 }
 
@@ -47,6 +53,15 @@ ObjString* takeString(char* chars, int length) {
     // We hash the string on init.
     uint32_t hash = hashString(chars, length);
 
+    // If we've allocated this string before, free it
+    // (since the old owner doesn't need it anymore),
+    // then give it to the new owner.
+    ObjString* interned = tableFindString(&vm.strings, chars, length, hash);
+    if (interned != NULL) {
+        FREE_ARRAY(char, chars, length + 1);
+        return interned;
+    }
+
     return allocateString(chars, length, hash);
 }
 
@@ -55,6 +70,13 @@ ObjString* takeString(char* chars, int length) {
 ObjString* copyString(const char* chars, int length) {
     // We hash the string on init.
     uint32_t hash = hashString(chars, length);
+
+    // If we've allocated memory for this
+    // string before, return its memory address.
+    ObjString* interned = tableFindString(&vm.strings, chars, length, hash);
+    if (interned != NULL) return interned;
+
+    // Otherwise, allocate a new string.
 
     char* heapChars = ALLOCATE(char, length + 1);
     memcpy(heapChars, chars, length);

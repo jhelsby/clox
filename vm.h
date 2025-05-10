@@ -5,6 +5,7 @@
 #define clox_vm_h
 
 #include "chunk.h"
+#include "table.h"
 #include "value.h"
 
 #define STACK_MAX 256
@@ -18,9 +19,16 @@ typedef struct {
 
     // Provides a stack to store temporary variables.
     Value stack[STACK_MAX];
+
     // Stack pointer. Points to where the next value
     // will go. An empty stack has stackTop = 0.
     Value* stackTop;
+
+    // For string interning. We never store duplicate
+    // strings - if two strings are equal, deduplicate so
+    // we can refer to both using the same memory address.
+    Table strings;
+
     // Head of our linked list of allocated Objs. For GC.
     Obj* objects;
 } VM;

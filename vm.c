@@ -26,6 +26,9 @@ void initVM() {
     resetStack();
     // Initially, no allocated objects.
     vm.objects = NULL;
+
+    // No stored strings on VM init.
+    initTable(&vm.strings);
 }
 
 // Call runtime errors with informative error reporting,
@@ -44,6 +47,8 @@ static void runtimeError(const char* format, ...) {
 }
 
 void freeVM() {
+    freeTable(&vm.strings);
+
     // Free all allocated objects when a program terminates.
     freeObjects();
 }
