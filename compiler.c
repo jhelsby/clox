@@ -39,9 +39,11 @@ typedef enum {
   PREC_PRIMARY
 } Precedence;
 
-// Simple typedef for a function type with no arguments and
-// returns nothing. Hides C's function pointer type syntax.
-typedef void (*ParseFn)();
+// Simple typedef. Hides C's function pointer type syntax.
+// It needs to accept the canAssign function for variable
+// assignment, even though no other ParseFns use it. For details, see:
+// https://craftinginterpreters.com/global-variables.html#assignment
+typedef void (*ParseFn)(bool canAssign);
 
 typedef struct {
   ParseFn prefix;
@@ -214,7 +216,8 @@ static void defineVariable(uint8_t global) {
 }
 
 // Compile a binary expression, with an infix operator.
-static void binary() {
+// canAssign is unused - required for assignment in variable().
+static void binary(bool canAssign) {
   // Assume the left-hand operand expression has already been
   // compiled, and the subsequent infix operator consumed.
   TokenType operatorType = parser.previous.type;
@@ -247,8 +250,9 @@ static void binary() {
 }
 
 // Compile Boolean and nil literals to bytecode.
-static void literal() {
-  switch (parser.previous.type) {
+// canAssign is unused - required for assignment in variable().
+static void literal(bool canAssign) {
+    switch (parser.previous.type) {
     case TOKEN_FALSE: emitByte(OP_FALSE); break;
     case TOKEN_NIL: emitByte(OP_NIL); break;
     case TOKEN_TRUE: emitByte(OP_TRUE); break;
@@ -257,40 +261,56 @@ static void literal() {
 }
 
 // Parse and compile parenthesised grouping expressions.
-static void grouping() {
+// canAssign is unused - required for assignment in variable().
+static void grouping(bool canAssign) {
   // Assume the initial '(' has already been consumed.
   expression();
   consume(TOKEN_RIGHT_PAREN, "Expect ')' after expression.");
 }
 
 // Compile a number literal.
-static void number() {
+// canAssign is unused - required for assignment in variable().
+static void number(bool canAssign) {
   double value = strtod(parser.previous.start, NULL);
   emitConstant(NUMBER_VAL(value));
 }
 
 // Assuming a string token has hit, copy the lexeme providing
 // the string's characters into a new string object.
-static void string() {
+// canAssign is unused - required for assignment in variable().
+static void string(bool canAssign) {
   // The +1 and -2 parts are trimming the string's quotation marks.
   emitConstant(OBJ_VAL(copyString(parser.previous.start + 1,
                                   parser.previous.length - 2)));
 }
 
-// Add a variable's name to the chunk's constant table as a string.
-static void namedVariable(Token name) {
-  uint8_t arg = identifierConstant(&name);
-  emitBytes(OP_GET_GLOBAL, arg);
+// Compile a named variable. If it has already
+// been assigned, retrieve its associated value.
+// If we are reassigning it, and assignment is
+// permitted, compile the assigned value and
+// emit an assignment instruction.
+static void namedVariable(Token name, bool canAssign) {  uint8_t arg = identifierConstant(&name);
+
+  if (canAssign && match(TOKEN_EQUAL)) {
+    // Assignment.
+    expression();
+    emitBytes(OP_SET_GLOBAL, arg);
+  } else {
+    // Retrieval.
+    emitBytes(OP_GET_GLOBAL, arg);
+  }
 }
 
 
-// Compile a variable.
-static void variable() {
-  namedVariable(parser.previous);
+// Compile a variable. Flag when it
+// is permitted to assign it a value.
+static void variable(bool canAssign) {
+  namedVariable(parser.previous, canAssign);
 }
 
 // Compile a unary operator and its operand.
-static void unary() {
+// canAssign is unused - required for assignment in variable().
+static void unary(bool canAssign) {
   // Assume the unary operator token has already been parsed.
   TokenType operatorType = parser.previous.type;
 
@@ -372,7 +392,11 @@ static void parsePrecedence(Precedence precedence) {
     error("Expect expression.");
     return;
   }
-  prefixRule();
+
+  // Only allow assignment when parsing an assignment
+  // expression or top-level expression.
+  bool canAssign = precedence <= PREC_ASSIGNMENT;
+  prefixRule(canAssign);
 
   // Check if the next token is an infix operator. If it is,
   // and precedence is low enough, keep parsing through until
@@ -381,7 +405,14 @@ static void parsePrecedence(Precedence precedence) {
   while (precedence <= getRule(parser.current.type)->precedence) {
     advance();
     ParseFn infixRule = getRule(parser.previous.type)->infix;
-    infixRule();
+    infixRule(canAssign);
+  }
+
+  // If we were trying to assign a variable
+  // but weren't able to consume the = token,
+  // there's been an error. Report it.
+  if (canAssign && match(TOKEN_EQUAL)) {
+    error("Invalid assignment target.");
   }
 }
 

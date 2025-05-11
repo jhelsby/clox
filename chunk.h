@@ -32,6 +32,9 @@ typedef enum {
     // in the chunk's constant table.
     OP_DEFINE_GLOBAL,
 
+    // Assign a global variable.
+    OP_SET_GLOBAL,
+
     // Operators that return booleans.
     OP_EQUAL,
     OP_GREATER,

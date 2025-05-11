@@ -206,6 +206,27 @@ static InterpretResult run() {
                 break;
             }
 
+            // Assign a global variable.
+            case OP_SET_GLOBAL: {
+                // Read the operand string.
+                ObjString* name = READ_STRING();
+
+                // Store (name, value) in the table.
+                // This returns true if a new entry was added.
+                if (tableSet(&vm.globals, name, peek(0))) {
+
+                    // If the string hasn't been defined as a global
+                    // variable, assigning to it is a runtime error.
+
+                    // Delete the variable - we just assigned it.
+                    tableDelete(&vm.globals, name);
+
+                    runtimeError("Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
+
             // Equal can be evaluated on any pair of objects.
             case OP_EQUAL: {
                 Value b = pop();
