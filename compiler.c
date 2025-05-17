@@ -219,6 +219,18 @@ static void endCompiler() {
 #endif
 }
 
+// Create a new scope by incrementing the
+// compiler's current local variable depth.
+static void beginScope() {
+  current->scopeDepth++;
+}
+
+// End a scope by decrementing the
+// compiler's current local variable depth.
+static void endScope() {
+  current->scopeDepth--;
+}
+
 // Declare these here so we can:
 // - reference them in our rules table below, then
 //   define them AFTER the table.
@@ -467,6 +479,16 @@ static void expression() {
   parsePrecedence(PREC_ASSIGNMENT);
 }
 
+// Parse a block statement.
+static void block() {
+  // Parse declarations and statements until the end of the block ('}').
+  while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+    declaration();
+  }
+
+  consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
+}
+
 // Parse a variable declaration.
 // For now, we only handle global variables.
 static void varDeclaration() {
@@ -559,6 +581,11 @@ static void declaration() {
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
+  // '{' initialises a new block, with its own scope.
+  } else if (match(TOKEN_LEFT_BRACE)) {
+    beginScope();
+    block();
+    endScope();
   } else {
     expressionStatement();
   }
