@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "common.h"
 #include "compiler.h"
@@ -225,10 +226,19 @@ static void beginScope() {
   current->scopeDepth++;
 }
 
-// End a scope by decrementing the
-// compiler's current local variable depth.
+// End a scope by:
+// - decrementing the compiler's current local variable depth.
+// - popping them from the stack.
+// - discarding them from our local variable list.
 static void endScope() {
   current->scopeDepth--;
+
+  while (current->localCount > 0 &&
+         current->locals[current->localCount - 1].depth >
+            current->scopeDepth) {
+    emitByte(OP_POP);
+    current->localCount--;
+  }
 }
 
 // Declare these here so we can:
@@ -252,16 +262,80 @@ static uint8_t identifierConstant(Token* name) {
                                          name->length)));
 }
 
-// Parse a variable and store it in the chunk's constant
-// table. Return the index of the constant in the table.
+// Compare the identifier of two variables.
+static bool identifiersEqual(Token* a, Token* b) {
+  if (a->length != b->length) return false;
+  return memcmp(a->start, b->start, a->length) == 0;
+}
+
+// Add a new local variable to our list of locals.
+// Store its existence, name, and scope depth.
+static void addLocal(Token name) {
+  // We store the index of our local variables with a
+  // single-byte operand, which limits how many we can store.
+  if (current->localCount == UINT8_COUNT) {
+    error("Too many local variables in function.");
+    return;
+  }
+
+  Local* local = &current->locals[current->localCount++];
+  local->name = name;
+  local->depth = current->scopeDepth;
+}
+
+// For local variables, record the existence of the variable
+// at compile-time. For global variables, do nothing.
+static void declareVariable() {
+  // Don't declare global variables - they are handled at runtime.
+  if (current->scopeDepth == 0) return;
+
+  // Extract the local variable's name.
+  Token* name = &parser.previous;
+
+  // Check all the other variables in the current scope,
+  // to see if we've already declared one with this name.
+  for (int i = current->localCount - 1; i >= 0; i--) {
+    Local* local = &current->locals[i];
+    // Check if we've exited the scope. A depth of -1
+    // is used to indicate uninitialized local variables.
+    if (local->depth != -1 && local->depth < current->scopeDepth) {
+      break;
+    }
+
+    if (identifiersEqual(name, &local->name)) {
+      error("Already a variable with this name in this scope.");
+    }
+  }
+
+  // Add it to our list of locals.
+  addLocal(*name);
+}
+
+// Parse a variable, then:
+// - For global variables, store it in the chunk's global constant
+//   table. Return the index of the constant in the table.
+// - For a local variable, declare it and exit.
 static uint8_t parseVariable(const char* errorMessage) {
   consume(TOKEN_IDENTIFIER, errorMessage);
+
+  // Declares a local variable; does nothing for globals.
+  declareVariable();
+
+  // Don't store local variables in the global constant table.
+  if (current->scopeDepth > 0) return 0;
+
+  // Store global variables in the constant table.
   return identifierConstant(&parser.previous);
 }
 
-// Output's the "define variable" bytecode instruction
-// and stores the initial value, using the constant table.
+// For global variables, outputs the "define variable" bytecode
+// instruction and stores the initial value, using the constant
+// table. For local variables, do nothing - we've already
+// created the necessary information at compile time.
 static void defineVariable(uint8_t global) {
+
+  if (current->scopeDepth > 0) return;
+
   emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
@@ -339,7 +413,8 @@ static void string(bool canAssign) {
 // If we are reassigning it, and assignment is
 // permitted, compile the assigned value and
 // emit an assignment instruction.
-static void namedVariable(Token name, bool canAssign) {  uint8_t arg = identifierConstant(&name);
+static void namedVariable(Token name, bool canAssign) {
+  uint8_t arg = identifierConstant(&name);
 
   if (canAssign && match(TOKEN_EQUAL)) {
     // Assignment.
