@@ -268,8 +268,41 @@ static bool identifiersEqual(Token* a, Token* b) {
   return memcmp(a->start, b->start, a->length) == 0;
 }
 
+// Resolve a local variable - given an identifier, find
+// its corresponding local variable (if it exists).
+// If multiple local variables with that name exist,
+// we want the one declared in the deepest scope.
+// If the local variable doesn't exist, return -1.
+static int resolveLocal(Compiler* compiler, Token* name) {
+  // Loop backwards over all local variables in our list,
+  // to get the most deeply scoped local variable
+  // whose name matches the given identifier.
+  for (int i = compiler->localCount - 1; i >= 0; i--) {
+    // Retrieve the local variable we stored at index i.
+    Local* local = &compiler->locals[i];
+
+    // Get the first matching variable we find - this will
+    // be the most deeply scoped.
+    if (identifiersEqual(name, &local->name)) {
+      // Forbid edge cases like:
+      // {
+      //    var a = "outer";
+      //    {
+      //       var a = a;
+      //    }
+      // }
+      if (local->depth == -1) error("Can't read local variable in its own initializer.");
+
+      return i;
+    }
+  }
+
+  // Return -1 if there is no local variable with the given name.
+  return -1;
+}
+
 // Add a new local variable to our list of locals.
-// Store its existence, name, and scope depth.
+// Store its existence and name.
 static void addLocal(Token name) {
   // We store the index of our local variables with a
   // single-byte operand, which limits how many we can store.
@@ -280,7 +313,10 @@ static void addLocal(Token name) {
 
   Local* local = &current->locals[current->localCount++];
   local->name = name;
-  local->depth = current->scopeDepth;
+
+  // Set scope depth to -1 to indicate the variable is uninitialised.
+  // Set it correctly once the variable's initializer has been compiled.
+  local->depth = -1;
 }
 
 // For local variables, record the existence of the variable
@@ -328,13 +364,23 @@ static uint8_t parseVariable(const char* errorMessage) {
   return identifierConstant(&parser.previous);
 }
 
+// Mark the local variable currently being created
+// as initialized, and set its depth.
+static void markInitialized() {
+  current->locals[current->localCount - 1].depth = current->scopeDepth;
+}
+
 // For global variables, outputs the "define variable" bytecode
 // instruction and stores the initial value, using the constant
-// table. For local variables, do nothing - we've already
-// created the necessary information at compile time.
+// table. For local variables, marks them as initialized.
 static void defineVariable(uint8_t global) {
 
-  if (current->scopeDepth > 0) return;
+  if (current->scopeDepth > 0) {
+    // Indicate the variable has been initialized,
+    // and set its scope depth.
+    markInitialized();
+    return;
+  }
 
   emitBytes(OP_DEFINE_GLOBAL, global);
 }
@@ -414,15 +460,28 @@ static void string(bool canAssign) {
 // permitted, compile the assigned value and
 // emit an assignment instruction.
 static void namedVariable(Token name, bool canAssign) {
-  uint8_t arg = identifierConstant(&name);
+  uint8_t getOp, setOp;
+
+  // Check if the variable is local. If it is, resolve it.
+  int arg = resolveLocal(current, &name);
+
+  // resolveLocal() returns -1 if the variable was global.
+  if (arg != -1) {
+    getOp = OP_GET_LOCAL;
+    setOp = OP_SET_LOCAL;
+  } else {
+    arg = identifierConstant(&name);
+    getOp = OP_GET_GLOBAL;
+    setOp = OP_SET_GLOBAL;
+  }
 
   if (canAssign && match(TOKEN_EQUAL)) {
     // Assignment.
     expression();
-    emitBytes(OP_SET_GLOBAL, arg);
+    emitBytes(setOp, (uint8_t)arg);
   } else {
     // Retrieval.
-    emitBytes(OP_GET_GLOBAL, arg);
+    emitBytes(getOp, (uint8_t)arg);
   }
 }
 

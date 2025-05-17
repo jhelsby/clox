@@ -24,6 +24,9 @@ typedef enum {
     // Pop the top value of the stack and forget it.
     OP_POP,
 
+    // Load a local variable.
+    OP_GET_LOCAL,
+
     // Load a global variable.
     OP_GET_GLOBAL,
 
@@ -31,6 +34,9 @@ typedef enum {
     // operand is the index of the variable's name
     // in the chunk's constant table.
     OP_DEFINE_GLOBAL,
+
+    // Assign a local variable.
+    OP_SET_LOCAL,
 
     // Assign a global variable.
     OP_SET_GLOBAL,

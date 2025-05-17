@@ -170,6 +170,25 @@ static InterpretResult run() {
             // Pop the top value of the stack and forget it.
             case OP_POP: pop(); break;
 
+            // Load a local variable from the stack slot
+            // where the local lives (given in the operand).
+            // Push it onto the stack for later instrucitons.
+            case OP_GET_LOCAL: {
+                uint8_t slot = READ_BYTE();
+                push(vm.stack[slot]);
+                break;
+            }
+
+            // Take a local variable's assigned value from
+            // the top of the stack, and store it in the stack
+            // slot corresponding to the local variable (given
+            // in the operand). Note that we don't pop the stack.
+            case OP_SET_LOCAL: {
+                uint8_t slot = READ_BYTE();
+                vm.stack[slot] = peek(0);
+                break;
+            }
+
             // Load a global variable. The instruction's operand is the
             // index of the variable's name in the chunk's constant table.
             case OP_GET_GLOBAL: {
