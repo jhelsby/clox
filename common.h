@@ -14,4 +14,7 @@
 // Flag to add diagnostic logging to the VM.
 #define DEBUG_TRACE_EXECUTION
 
+// The number of things we can encode in a byte.
+#define UINT8_COUNT (UINT8_MAX + 1)
+
 #endif

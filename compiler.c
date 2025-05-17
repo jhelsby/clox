@@ -51,7 +51,38 @@ typedef struct {
   Precedence precedence;
 } ParseRule;
 
+// Store the name of a local variable,
+// so we can find it when resolving
+// identifiers with a matching lexeme.
+typedef struct {
+  Token name;
+  // Record the scope depth of the local
+  // variable's block, for faster resolution.
+  int depth;
+} Local;
+
+// Store local variables, ordered in the
+// array in the order of their declarations.
+typedef struct {
+  Local locals[UINT8_COUNT];
+  // How many locals are in scope.
+  int localCount;
+  // How many blocks surround the section
+  // of code we're currently compiling. This
+  // allows us to easily discard all locals in a
+  // given block. Scope depth zero is global scope.
+  int scopeDepth;
+} Compiler;
+
 Parser parser;
+
+// Global variable pointing to the compiler.
+// This allows us to access the compiler from
+// the frontend, for local variable resolution.
+// A safer way to do this would be to create
+// the compiler when we initialise the VM and
+// pass it as an argument to all frontend functions.
+Compiler* current = NULL;
 
 // Store the chunk currently being compiled.
 // Gets set at the beginning of compile().
@@ -167,6 +198,13 @@ static uint8_t makeConstant(Value value) {
 // Append a constant to the chunk.
 static void emitConstant(Value value) {
   emitBytes(OP_CONSTANT, makeConstant(value));
+}
+
+// Initialise the compiler, for local variable resolution.
+static void initCompiler(Compiler* compiler) {
+  compiler->localCount = 0;
+  compiler->scopeDepth = 0;
+  current = compiler;
 }
 
 // Completes a compiled chunk by adding
@@ -528,6 +566,10 @@ static void statement() {
 
 bool compile(const char* source, Chunk* chunk) {
   initScanner(source);
+
+  Compiler compiler;
+  initCompiler(&compiler);
+
   compilingChunk = chunk;
 
   parser.hadError = false;
