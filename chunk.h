@@ -61,6 +61,13 @@ typedef enum {
     // Evaluate and print an expression.
     OP_PRINT,
 
+    // Created after we've executed an if-statement's "then" branch,
+    // to jump over the "else" branch.
+     OP_JUMP,
+
+    // If an if-condition is false, jump over its "then" branch.
+    OP_JUMP_IF_FALSE,
+
     // Return from the current function.
     OP_RETURN,
 } OpCode;

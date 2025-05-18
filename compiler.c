@@ -176,6 +176,20 @@ static void emitBytes(uint8_t byte1, uint8_t byte2) {
   emitByte(byte2);
 }
 
+// Append three bytes to a chunk: a jump instruction, and
+// two placeholder bytes to store the jump offset.
+// The jump instruction is given as an argument as
+// we will use it for two different kinds of jump.
+// Return the offset of the emitted instruction in the chunk.
+static int emitJump(uint8_t instruction) {
+  emitByte(instruction);
+  // Two bytes (16-bits) of offset lets
+  // us jump over 65,535 bytes of code.
+  emitByte(0xff);
+  emitByte(0xff);
+  return currentChunk()->count - 2;
+}
+
 // Append a return instruction to the chunk.
 static void emitReturn() {
   emitByte(OP_RETURN);
@@ -199,6 +213,22 @@ static uint8_t makeConstant(Value value) {
 // Append a constant to the chunk.
 static void emitConstant(Value value) {
   emitBytes(OP_CONSTANT, makeConstant(value));
+}
+
+// Overwrite a jump instruction's placeholder offset bytes
+// with an actual offset.
+static void patchJump(int offset) {
+  // -2 to adjust for the bytecode for the jump offset itself.
+  int jump = currentChunk()->count - offset - 2;
+
+  if (jump > UINT16_MAX) {
+    error("Too much code to jump over.");
+  }
+
+  // Write the first byte of the jump distance.
+  currentChunk()->code[offset] = (jump >> 8) & 0xff;
+  // Write the second byte of the jump distance.
+  currentChunk()->code[offset + 1] = jump & 0xff;
 }
 
 // Initialise the compiler, for local variable resolution.
@@ -646,12 +676,54 @@ static void varDeclaration() {
 }
 
 // Parse an expression statement - an expression
-// followed by a semicolon. It evalautes the
+// followed by a semicolon. It evaluates the
 // expression and discards the result.
 static void expressionStatement() {
   expression();
   consume(TOKEN_SEMICOLON, "Expect ';' after expression.");
   emitByte(OP_POP);
+}
+
+// Parse an if statement. If the if-condition is falsey,
+// then we jump over the "then" branch's bytecode instructions,
+// to the "else" branch. If truthy, process the "then"
+// branch and jump over the "else" branch.
+static void ifStatement() {
+  // Consume the if-condition.
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+  expression();
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+  // Prepare a "jump" instruction with a placeholder jump offset,
+  // to jump over the "then" block if the if-condition is falsy.
+  // Store the offset of the emitted instruction.
+  int thenJump = emitJump(OP_JUMP_IF_FALSE);
+
+  // Remove the if condition from the stack. Due to the then-jump,
+  // this is only executed if we entered the "if" block.
+  emitByte(OP_POP);
+
+  // Consume the "then" block.
+  statement();
+
+  // Prepare a "jump" instruction with a placeholder jump offset,
+  // to jump over the "then" block if the if-condition is truthy.
+  // Store the offset of the emitted instruction.
+  int elseJump = emitJump(OP_JUMP);
+
+  // Set the then-jump instruction's offset
+  // as the length of the "then" block.
+  patchJump(thenJump);
+
+  // Remove the if condition from the stack. Due to the then-jump,
+  // this is only executed if we entered the "else" block.
+  emitByte(OP_POP);
+
+  if (match(TOKEN_ELSE)) statement();
+
+  // Set the else-jump instruction's offset
+  // as the length of the "else" block.
+  patchJump(elseJump);
 }
 
 // Evaluate and print an expression.
@@ -715,6 +787,8 @@ static void declaration() {
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
+  } else if (match(TOKEN_IF)) {
+    ifStatement();
   // '{' initialises a new block, with its own scope.
   } else if (match(TOKEN_LEFT_BRACE)) {
     beginScope();
