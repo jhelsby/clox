@@ -415,6 +415,21 @@ static void defineVariable(uint8_t global) {
   emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
+// Compile an and statement, with short-circuiting.
+static void and_(bool canAssign) {
+  // At this point, we've already compiled the left-hand condition.
+  // If it's false, we can skip over the rest due to short-circuiting.
+  int endJump = emitJump(OP_JUMP_IF_FALSE);
+
+  // If the left-hand condition is truthy, discard it
+  // and evaluate the right-hand condition.
+  emitByte(OP_POP);
+  parsePrecedence(PREC_AND);
+
+  // If the left-hand condition is falsy, skip the right-hand condition.
+  patchJump(endJump);
+}
+
 // Compile a binary expression, with an infix operator.
 // canAssign is unused - required for assignment in variable().
 static void binary(bool canAssign) {
@@ -473,6 +488,23 @@ static void grouping(bool canAssign) {
 static void number(bool canAssign) {
   double value = strtod(parser.previous.start, NULL);
   emitConstant(NUMBER_VAL(value));
+}
+
+// Compile an or statement, with short-circuiting.
+static void or_(bool canAssign) {
+  // If the left-hand condition is false, discard it and
+  // evaluate the right-hand condtion.
+  int elseJump = emitJump(OP_JUMP_IF_FALSE);
+
+  // If the left-hand condition is true, we can
+  // skip the right-hand condition.
+  int endJump = emitJump(OP_JUMP);
+
+  patchJump(elseJump);
+  emitByte(OP_POP);
+
+  parsePrecedence(PREC_OR);
+  patchJump(endJump);
 }
 
 // Assuming a string token has hit, copy the lexeme providing
@@ -575,7 +607,7 @@ ParseRule rules[] = {
   [TOKEN_IDENTIFIER]    = {variable, NULL,   PREC_NONE},
   [TOKEN_STRING]        = {string,   NULL,   PREC_NONE},
   [TOKEN_NUMBER]        = {number,   NULL,   PREC_NONE},
-  [TOKEN_AND]           = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_AND]           = {NULL,     and_,   PREC_AND},
   [TOKEN_CLASS]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_ELSE]          = {NULL,     NULL,   PREC_NONE},
   [TOKEN_FALSE]         = {literal,  NULL,   PREC_NONE},
@@ -583,7 +615,7 @@ ParseRule rules[] = {
   [TOKEN_FUN]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_IF]            = {NULL,     NULL,   PREC_NONE},
   [TOKEN_NIL]           = {literal,  NULL,   PREC_NONE},
-  [TOKEN_OR]            = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_OR]            = {NULL,     or_,    PREC_OR},
   [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
   [TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE},
