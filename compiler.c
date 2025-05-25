@@ -176,6 +176,18 @@ static void emitBytes(uint8_t byte1, uint8_t byte2) {
   emitByte(byte2);
 }
 
+// Loop back to the given byte offset.
+static void emitLoop(int loopStart) {
+  emitByte(OP_LOOP);
+
+  int offset = currentChunk()->count - loopStart + 2;
+  if (offset > UINT16_MAX) error("Loop body too large.");
+
+  // Write the two byte instructions needed to describe the offset.
+  emitByte((offset >> 8) & 0xff);
+  emitByte(offset & 0xff);
+}
+
 // Append three bytes to a chunk: a jump instruction, and
 // two placeholder bytes to store the jump offset.
 // The jump instruction is given as an argument as
@@ -716,6 +728,74 @@ static void expressionStatement() {
   emitByte(OP_POP);
 }
 
+
+// Compile a for-statement - for (initializer; condition; increment) { body }.
+static void forStatement() {
+  // Wrap the for statement in a scope, in case we declare any
+  // local variables in the initializer which we should discard afterwards.
+  beginScope();
+
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'for'.");
+
+  // Compile initialiser. This can be a  variable declaration or an expression.
+  if (match(TOKEN_SEMICOLON)) {
+    // No initializer.
+  } else if (match(TOKEN_VAR)) {
+    varDeclaration();
+  } else {
+    expressionStatement();
+  }
+
+  // Save beginning of loop.
+  int loopStart = currentChunk()->count;
+
+  // Compile condition expression used to exit loop.
+  int exitJump = -1;
+  if (!match(TOKEN_SEMICOLON)) {
+    expression();
+    consume(TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+
+    // Jump out of the loop if the condition is false.
+    exitJump = emitJump(OP_JUMP_IF_FALSE);
+    emitByte(OP_POP); // Condition.
+  }
+
+  // Increment statement. Note that this:
+  // - appears BEFORE the body in terms of code.
+  // - appears AFTER the rest of the for-statement, in terms of instructions.
+  // Because of this, and because our compiler is single-pass,
+  // to compile this we need to use a tricky technique.
+  // We jump over the increment, run the body, jump back
+  // to the increment, run it, then go to the next iteration.
+  if (!match(TOKEN_RIGHT_PAREN)) {
+    // Store the start of the body.
+    int bodyJump = emitJump(OP_JUMP);
+    int incrementStart = currentChunk()->count;
+    expression();
+    emitByte(OP_POP);
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+
+    // Loop back to the start.
+    emitLoop(loopStart);
+    loopStart = incrementStart;
+
+    // Now we know the length of the increment expression,
+    // patch the jump to the start of the body.
+    patchJump(bodyJump);
+  }
+
+  statement();
+  emitLoop(loopStart);
+
+  // Now we know the full length of the statement, patch the loop.
+  if (exitJump != -1) {
+    patchJump(exitJump);
+    emitByte(OP_POP); // Condition.
+  }
+
+  endScope();
+}
+
 // Parse an if statement. If the if-condition is falsey,
 // then we jump over the "then" branch's bytecode instructions,
 // to the "else" branch. If truthy, process the "then"
@@ -763,6 +843,35 @@ static void printStatement() {
   expression();
   consume(TOKEN_SEMICOLON, "Expect ';' after value.");
   emitByte(OP_PRINT);
+}
+
+// Compile a while-statement. It works as follows:
+// - save the start location, so we can loop back if needed.
+// - check the while condition. If falsy, skip to the end.
+// - compile the body statement, and add a loop instruction.
+static void whileStatement() {
+  // Capture the current location, so we can loop back to it.
+  int loopStart = currentChunk()->count;
+
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after 'while'.");
+  expression();
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after condition.");
+
+  // Prepare to skip over the body statement if the condition is falsy.
+  int exitJump = emitJump(OP_JUMP_IF_FALSE);
+  emitByte(OP_POP);
+
+  // Compile the body statement.
+  statement();
+
+  // Add a loop instruction.
+  emitLoop(loopStart);
+
+  // Having compiled the body instructions, patch the jump length.
+  patchJump(exitJump);
+
+  // Pop the condition value from the stack.
+  emitByte(OP_POP);
 }
 
 // Hitting a compile error puts the compiler into panic mode.
@@ -819,8 +928,12 @@ static void declaration() {
 static void statement() {
   if (match(TOKEN_PRINT)) {
     printStatement();
+  } else if (match(TOKEN_FOR)) {
+    forStatement();
   } else if (match(TOKEN_IF)) {
     ifStatement();
+  } else if (match(TOKEN_WHILE)) {
+    whileStatement();
   // '{' initialises a new block, with its own scope.
   } else if (match(TOKEN_LEFT_BRACE)) {
     beginScope();
