@@ -472,6 +472,24 @@ static void defineVariable(uint8_t global) {
   emitBytes(OP_DEFINE_GLOBAL, global);
 }
 
+// Compile a list of comma-separated arguments.
+static uint8_t argumentList() {
+  uint8_t argCount = 0;
+  if (!check(TOKEN_RIGHT_PAREN)) {
+    do {
+      expression();
+
+      // We can only store 255 arguments the single-byte operand OP_CALL.
+      if (argCount == 255) {
+        error("Can't have more than 255 arguments.");
+      }
+      argCount++;
+    } while (match(TOKEN_COMMA));
+  }
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+  return argCount;
+}
+
 // Compile an and statement, with short-circuiting.
 static void and_(bool canAssign) {
   // At this point, we've already compiled the left-hand condition.
@@ -519,6 +537,11 @@ static void binary(bool canAssign) {
     case TOKEN_SLASH:         emitByte(OP_DIVIDE); break;
     default: return; // Unreachable.
   }
+}
+
+static void call(bool canAssign) {
+  uint8_t argCount = argumentList();
+  emitBytes(OP_CALL, argCount);
 }
 
 // Compile Boolean and nil literals to bytecode.
@@ -642,7 +665,10 @@ static void unary(bool canAssign) {
 ParseRule rules[] = {
   // Note that tokens are listed in the same order
   // as the TokenType enum, for easy lookup.
-  [TOKEN_LEFT_PAREN]    = {grouping, NULL,   PREC_NONE},
+
+  // For call, treat '(' as an infix operator.
+  // i.e. foo(bar where ) just indicates the end of bar.
+  [TOKEN_LEFT_PAREN]    = {grouping, call,   PREC_CALL},
   [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE},
   [TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},

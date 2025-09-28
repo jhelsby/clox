@@ -63,13 +63,16 @@ typedef enum {
 
     // Created after we've executed an if-statement's "then" branch,
     // to jump over the "else" branch.
-     OP_JUMP,
+    OP_JUMP,
 
     // If an if-condition is false, jump over its "then" branch.
     OP_JUMP_IF_FALSE,
 
     // Jump back to a given byte offset. For for- and while- loops.
     OP_LOOP,
+
+    // Indicate a function call.
+    OP_CALL,
 
     // Return from the current function.
     OP_RETURN,

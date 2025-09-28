@@ -42,10 +42,21 @@ static void runtimeError(const char* format, ...) {
     va_end(args);
     fputs("\n", stderr);
 
-    CallFrame* frame = &vm.frames[vm.frameCount - 1];
-    size_t instruction = frame->ip - frame->function->chunk.code - 1;
-    int line = frame->function->chunk.lines[instruction];
-    fprintf(stderr, "[line %d] in script\n", line);
+    // Print the stack trace, from top to bottom
+    // (most recently called function to top-level code).
+    for (int i = vm.frameCount - 1; i >= 0; i--) {
+        CallFrame* frame = &vm.frames[i];
+        ObjFunction* function = frame->function;
+        size_t instruction = frame->ip - function->chunk.code - 1;
+        fprintf(stderr, "[line %d] in ",
+                function->chunk.lines[instruction]);
+        if (function->name == NULL) {
+        fprintf(stderr, "script\n");
+        } else {
+        fprintf(stderr, "%s()\n", function->name->chars);
+        }
+    }
+
     resetStack();
 }
 
@@ -76,6 +87,44 @@ Value pop() {
 // Retrieve the top of the stack.
 static Value peek(int distance) {
     return vm.stackTop[-1 - distance];
+}
+
+// Call a function with the specified number of arguments.
+// Add its call frame to the stack.
+static bool call(ObjFunction* function, int argCount) {
+  if (argCount != function->arity) {
+    runtimeError("Expected %d arguments but got %d.",
+        function->arity, argCount);
+    return false;
+  }
+
+  if (vm.frameCount == FRAMES_MAX) {
+    runtimeError("Stack overflow.");
+    return false;
+  }
+
+  CallFrame* frame = &vm.frames[vm.frameCount++];
+  frame->function = function;
+  frame->ip = function->chunk.code;
+
+  // Offset by 1 because parameters are 1-indexed.
+  frame->slots = vm.stackTop - argCount - 1;
+  return true;
+}
+
+// Try to call a class or function, wrapped in a Value, with the given number of arguments.
+// If it's not a class or function, throw an error.
+static bool callValue(Value callee, int argCount) {
+  if (IS_OBJ(callee)) {
+    switch (OBJ_TYPE(callee)) {
+      case OBJ_FUNCTION:
+        return call(AS_FUNCTION(callee), argCount);
+      default:
+        break; // Non-callable object type.
+    }
+  }
+  runtimeError("Can only call functions and classes.");
+  return false;
 }
 
 // In Lox, nil and false are falsey and everything else is truthy.
@@ -328,6 +377,18 @@ static InterpretResult run() {
                 frame->ip -= offset;
                 break;
             }
+            // Execute a function call. The stack window contains the function
+            // then the arguments it's been called with, in order.
+            case OP_CALL: {
+                int argCount = READ_BYTE();
+                if (!callValue(peek(argCount), argCount)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                // callValue() adds a new frame to the call stack,
+                // for the called function. Retrieve this frame.
+                frame = &vm.frames[vm.frameCount - 1];
+                break;
+            }
             case OP_RETURN: {
                 // Exit interpreter.
                 return INTERPRET_OK;
@@ -352,12 +413,11 @@ InterpretResult interpret(const char* source) {
 
     if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
-    // Add the function to the call stack.
+    // Add the function to the value stack.
     push(OBJ_VAL(function));
-    CallFrame* frame = &vm.frames[vm.frameCount++];
-    frame->function = function;
-    frame->ip = function->chunk.code;
-    frame->slots = vm.stack;
+
+    // Add the call frame to the call stack.
+    call(function, 0);
 
     return run();
 }
