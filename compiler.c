@@ -71,13 +71,18 @@ typedef enum {
 
 // Store local variables, ordered in the
 // array in the order of their declarations.
-typedef struct {
+typedef struct Compiler {
   // To implement a call stack, we wrap the entire
   // compiler into an implicit top-level function.
   // Each time a function is called, we add its chunk to the
   // call stack, and remove it once it has finished running.
-  ObjFunction* function; // The function we're in.
-  FunctionType type; // If we're in a function body or a top-level script.
+
+  // The enclosing function (which could be the top-level function).
+  struct Compiler* enclosing;
+  // The current function we're in.
+  ObjFunction* function;
+  // If we're in a function body or a top-level script.
+  FunctionType type;
 
   Local locals[UINT8_COUNT];
   // How many locals are in scope.
@@ -257,12 +262,19 @@ static void patchJump(int offset) {
 
 // Initialise the compiler, for local variable resolution.
 static void initCompiler(Compiler* compiler, FunctionType type) {
+  compiler->enclosing = current;
   compiler->function = NULL; // Null this to address GC paranoia!
   compiler->type = type;
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
   compiler->function = newFunction();
   current = compiler;
+
+  // Having just parsed the current function,
+  // get its name from the previous token.
+  if (type != TYPE_SCRIPT) {
+    current->function->name = copyString(parser.previous.start, parser.previous.length);
+  }
 
   // Track how deep into the call stack we are.
   // Top-level gets slot 0 and has an empty name
@@ -287,6 +299,7 @@ static ObjFunction* endCompiler() {
   }
 #endif
 
+  current = current->enclosing;
   return function;
 }
 
@@ -437,6 +450,10 @@ static uint8_t parseVariable(const char* errorMessage) {
 // Mark the local variable currently being created
 // as initialized, and set its depth.
 static void markInitialized() {
+  // Handle top-level scope. No local variables,
+  // just globals - so we do nothing here.
+  if (current->scopeDepth == 0) return;
+
   current->locals[current->localCount - 1].depth = current->scopeDepth;
 }
 
@@ -725,6 +742,46 @@ static void block() {
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after block.");
 }
 
+// Parse a function declaration.
+// We create a new Compiler for each function to facilitate nesting.
+static void function(FunctionType type) {
+  Compiler compiler;
+  initCompiler(&compiler, type);
+
+  // No need to use endScope() later, because endCompiler does this for us.
+  beginScope();
+
+  consume(TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+
+  // Parse parameters, if they exist.
+  if (!check(TOKEN_RIGHT_PAREN)) {
+    do {
+      current->function->arity++;
+      if (current->function->arity > 255) {
+        errorAtCurrent("Can't have more than 255 parameters.");
+      }
+      uint8_t constant = parseVariable("Expect parameter name.");
+      defineVariable(constant);
+    } while (match(TOKEN_COMMA));
+  }
+  consume(TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+  consume(TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+  block();
+
+  ObjFunction* function = endCompiler();
+  emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL(function)));
+}
+
+// Parse a function declaration. We immediately set the
+// function variable as "initialized" to the function
+// to call itself recursively using its name.
+static void funDeclaration() {
+  uint8_t global = parseVariable("Expect function name.");
+  markInitialized();
+  function(TYPE_FUNCTION);
+  defineVariable(global);
+}
+
 // Parse a variable declaration.
 // For now, we only handle global variables.
 static void varDeclaration() {
@@ -938,7 +995,9 @@ static void synchronize() {
 // Will eventually parse all declarations:
 // classDecl, funDecl, varDecl, and statement.
 static void declaration() {
-  if (match(TOKEN_VAR)) {
+  if (match(TOKEN_FUN)) {
+    funDeclaration();
+  } else if (match(TOKEN_VAR)) {
     varDeclaration();
   } else {
     statement();
