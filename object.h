@@ -14,6 +14,7 @@
 #define clox_object_h
 
 #include "common.h"
+#include "chunk.h"
 #include "value.h"
 
 // Extract an object type tag from a value.
@@ -21,7 +22,11 @@
 
 // Check if an object is of a certain object type.
 // This allows for safe casting between Obj and the ObjType.
+#define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
 #define IS_STRING(value)       isObjType(value, OBJ_STRING)
+
+// Retrieve a value as an ObjFunction.
+#define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
 
 // Retrieve a value as an ObjString.
 #define AS_STRING(value)       ((ObjString*)AS_OBJ(value))
@@ -32,8 +37,8 @@
 // Different Obj types have distinct memory requirements,
 // so must be treated differently.
 typedef enum {
+    OBJ_FUNCTION,
     OBJ_STRING,
-    // More ObjTypes will be added later.
 } ObjType;
 
 // A "base class" for objects, containing the state shared
@@ -46,6 +51,16 @@ struct Obj {
     // It tracks th
     struct Obj* next;
 };
+
+// Contains all data and metadata needed to
+// describe an entire function and its bytecode.
+typedef struct {
+  Obj obj;
+  int arity;
+  // A dedicated chunk of bytecode containing instructions to execute the function.
+  Chunk chunk;
+  ObjString* name;
+} ObjFunction;
 
 // Standard implementation. A string object contains
 // a heap-allocated array of characters.
@@ -67,6 +82,9 @@ struct ObjString {
     // Cache the hash of the string on initialisation.
     uint32_t hash;
 };
+
+// Create a Lox function.
+ObjFunction* newFunction();
 
 // Claim ownership of the input C-string (reusing its memory)
 // and convert it to an ObjString.

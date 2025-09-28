@@ -30,6 +30,14 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
 // Free an allocated object, and all memory associated with it.
 static void freeObject(Obj* object) {
     switch (object->type) {
+      case OBJ_FUNCTION: {
+        // Free the ObjFunction and any other memory it owns.
+        ObjFunction* function = (ObjFunction*)object;
+        // Functions own their chunk.
+        freeChunk(&function->chunk);
+        FREE(ObjFunction, object);
+        break;
+      }
       case OBJ_STRING: {
         // Free the string's Obj and its character array.
         ObjString* string = (ObjString*)object;
