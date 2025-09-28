@@ -62,9 +62,23 @@ typedef struct {
   int depth;
 } Local;
 
+// Indicate when we're compiling top-level code
+// versus the body of a function.
+typedef enum {
+  TYPE_FUNCTION,
+  TYPE_SCRIPT // Top-level code.
+} FunctionType;
+
 // Store local variables, ordered in the
 // array in the order of their declarations.
 typedef struct {
+  // To implement a call stack, we wrap the entire
+  // compiler into an implicit top-level function.
+  // Each time a function is called, we add its chunk to the
+  // call stack, and remove it once it has finished running.
+  ObjFunction* function; // The function we're in.
+  FunctionType type; // If we're in a function body or a top-level script.
+
   Local locals[UINT8_COUNT];
   // How many locals are in scope.
   int localCount;
@@ -87,10 +101,8 @@ Compiler* current = NULL;
 
 // Store the chunk currently being compiled.
 // Gets set at the beginning of compile().
-Chunk* compilingChunk;
-
 static Chunk* currentChunk() {
-  return compilingChunk;
+  return &current->function->chunk;
 }
 
 static void errorAt(Token* token, const char* message) {
@@ -244,22 +256,38 @@ static void patchJump(int offset) {
 }
 
 // Initialise the compiler, for local variable resolution.
-static void initCompiler(Compiler* compiler) {
+static void initCompiler(Compiler* compiler, FunctionType type) {
+  compiler->function = NULL; // Null this to address GC paranoia!
+  compiler->type = type;
   compiler->localCount = 0;
   compiler->scopeDepth = 0;
+  compiler->function = newFunction();
   current = compiler;
+
+  // Track how deep into the call stack we are.
+  // Top-level gets slot 0 and has an empty name
+  // to avoid nameclashing with user-defined functions.
+  Local* local = &current->locals[current->localCount++];
+  local->depth = 0;
+  local->name.start = "";
+  local->name.length = 0;
 }
 
 // Completes a compiled chunk by adding
-// a return instruction at the end.
-static void endCompiler() {
+// a return instruction at the end, and
+// the function owning that chunk.
+static ObjFunction* endCompiler() {
   emitReturn();
+  ObjFunction* function = current->function;
 
 #ifdef DEBUG_PRINT_CODE
   if (!parser.hadError) {
-    disassembleChunk(currentChunk(), "code");
+    disassembleChunk(currentChunk(), function->name != NULL
+        ? function->name->chars : "<script>");
   }
 #endif
+
+  return function;
 }
 
 // Create a new scope by incrementing the
@@ -944,13 +972,11 @@ static void statement() {
   }
 }
 
-bool compile(const char* source, Chunk* chunk) {
+bool compile(const char* source) {
   initScanner(source);
 
   Compiler compiler;
-  initCompiler(&compiler);
-
-  compilingChunk = chunk;
+  initCompiler(&compiler, TYPE_SCRIPT);
 
   parser.hadError = false;
   parser.panicMode = false;
@@ -963,8 +989,7 @@ bool compile(const char* source, Chunk* chunk) {
     declaration();
   }
 
-  endCompiler();
-
-  // Indicate whether the compilation was successful.
-  return !parser.hadError;
+  // Return the compiled function, or indicate any errors.
+  ObjFunction* function = endCompiler();
+  return parser.hadError ? NULL : function;
 }
