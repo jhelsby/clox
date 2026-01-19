@@ -66,6 +66,8 @@ struct Obj {
 typedef struct {
   Obj obj;
   int arity;
+  // Track the number of upvalues - when a variable lies in the local scope of an enclosing function.
+  int upvalueCount;
   // A dedicated chunk of bytecode containing instructions to execute the function.
   Chunk chunk;
   ObjString* name;

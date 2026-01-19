@@ -62,6 +62,14 @@ typedef struct {
   int depth;
 } Local;
 
+// Store an upvalue, so we can find it when resolving it.
+typedef struct {
+  // The index of the upvalue - the slot it's stored in.
+  uint8_t index;
+  // Whether the closure captures a local variable or an upvalue from the surrounding function.
+  bool isLocal;
+} Upvalue;
+
 // Indicate when we're compiling top-level code
 // versus the body of a function.
 typedef enum {
@@ -87,6 +95,12 @@ typedef struct Compiler {
   Local locals[UINT8_COUNT];
   // How many locals are in scope.
   int localCount;
+
+  // OP_GET_UPVALUE and OP_SET_UPVALUE encode an upvalue index
+  // using a single byte operand, so a function can enclose over
+  // no more than UINT8_COUNT unique variables.
+  Upvalue upvalues[UINT8_COUNT];
+
   // How many blocks surround the section
   // of code we're currently compiling. This
   // allows us to easily discard all locals in a
@@ -388,6 +402,56 @@ static int resolveLocal(Compiler* compiler, Token* name) {
   return -1;
 }
 
+// Store an upvalue - when a variable lies in the local scope of an enclosing function.
+static int addUpvalue(Compiler* compiler, uint8_t index,
+                      bool isLocal) {
+  int upvalueCount = compiler->function->upvalueCount;
+
+  // Check if an upvalue already exists for the given variable.
+  // If so, reuse it.
+  for (int i = 0; i < upvalueCount; i++) {
+    Upvalue* upvalue = &compiler->upvalues[i];
+    if (upvalue->index == index && upvalue->isLocal == isLocal) {
+      return i;
+    }
+  }
+
+  // OP_GET_UPVALUE and OP_SET_UPVALUE encode an upvalue index
+  // using a single byte operand, so a function can enclose over
+  // no more than UINT8_COUNT unique variables.
+  if (upvalueCount == UINT8_COUNT) {
+    error("Too many closure variables in function.");
+    return 0;
+  }
+
+  // Otherwise, add a new upvalue.
+  compiler->upvalues[upvalueCount].isLocal = isLocal;
+  compiler->upvalues[upvalueCount].index = index;
+  return compiler->function->upvalueCount++;
+}
+
+// Resolve an upvalue - when a variable lies in the local scope of an enclosing function.
+// If the upvalue doesn't exist, return -1.
+static int resolveUpvalue(Compiler* compiler, Token* name) {
+  if (compiler->enclosing == NULL) return -1;
+
+  // Ensure the variable isn't local.
+  int local = resolveLocal(compiler->enclosing, name);
+  if (local != -1) {
+    return addUpvalue(compiler, (uint8_t)local, true);
+  }
+
+  // Check if the upvalue references a variable defined in the parent scope.
+  int upvalue = resolveUpvalue(compiler->enclosing, name);
+  if (upvalue != -1) {
+    // If not, traverse the parent scopes to find the root definition.
+    return addUpvalue(compiler, (uint8_t)upvalue, false);
+  }
+
+  // If the variable doesn't lie in any of the parent scopes, the upvalue doesn't exist.
+  return -1;
+}
+
 // Add a new local variable to our list of locals.
 // Store its existence and name.
 static void addLocal(Token name) {
@@ -611,10 +675,14 @@ static void namedVariable(Token name, bool canAssign) {
   // Check if the variable is local. If it is, resolve it.
   int arg = resolveLocal(current, &name);
 
-  // resolveLocal() returns -1 if the variable was global.
+  // resolveLocal() returns -1 if the variable isn't in the local scope.
   if (arg != -1) {
     getOp = OP_GET_LOCAL;
     setOp = OP_SET_LOCAL;
+  } else if ((arg = resolveUpvalue(current, &name)) != -1) {
+    // Handle if the variable lies in the local scope of an enclosing function.
+    getOp = OP_GET_UPVALUE;
+    setOp = OP_SET_UPVALUE;
   } else {
     arg = identifierConstant(&name);
     getOp = OP_GET_GLOBAL;
@@ -803,6 +871,11 @@ static void function(FunctionType type) {
   // Wrap every function in a closure, regardless of if it contains
   // any captured variables. This is inefficient but simple.
   emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(function)));
+
+  for (int i = 0; i < function->upvalueCount; i++) {
+    emitByte(compiler.upvalues[i].isLocal ? 1 : 0);
+    emitByte(compiler.upvalues[i].index);
+  }
 }
 
 // Parse a function declaration. We immediately set the

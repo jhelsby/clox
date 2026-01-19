@@ -41,6 +41,10 @@ typedef enum {
     // Assign a global variable.
     OP_SET_GLOBAL,
 
+    // Assign or retrieve a variable from an enclosing function's local scope.
+    OP_GET_UPVALUE,
+    OP_SET_UPVALUE,
+
     // Operators that return booleans.
     OP_EQUAL,
     OP_GREATER,
