@@ -31,10 +31,13 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
 static void freeObject(Obj* object) {
     switch (object->type) {
       case OBJ_CLOSURE: {
-        // Free the closure, but not the function.
+        // Free the closure and all its upvalues, but not the associated function.
         // There may be multiple closures that all reference the same function,
         // and we can only free the function once all of those closures are gone.
         // The GC will handle freeing the function.
+        ObjClosure* closure = (ObjClosure*)object;
+        FREE_ARRAY(ObjUpvalue*, closure->upvalues,
+                  closure->upvalueCount);
         FREE(ObjClosure, object);
         break;
       }
@@ -57,7 +60,11 @@ static void freeObject(Obj* object) {
         FREE(ObjString, object);
         break;
       }
-      // More cases to come.
+      case OBJ_UPVALUE:
+        // Free an upvalue, but not the variable it references.
+        // This is because multiple closures can close over the same variable.
+        FREE(ObjUpvalue, object);
+        break;
     }
 }
 

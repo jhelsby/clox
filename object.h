@@ -48,6 +48,7 @@ typedef enum {
     OBJ_FUNCTION,
     OBJ_NATIVE,
     OBJ_STRING,
+    OBJ_UPVALUE,
 } ObjType;
 
 // A "base class" for objects, containing the state shared
@@ -104,10 +105,24 @@ struct ObjString {
     uint32_t hash;
 };
 
+// Create an upvalue - when a variable lies in the local scope of an enclosing function.
+typedef struct ObjUpvalue {
+  Obj obj;
+  // A reference to the variable associated with the upvalue.
+  // This allows us to assign to the variable itself and not a copy.
+  Value* location;
+} ObjUpvalue;
+
 // Used to create closures, consisting of a function and any captured local variables.
 typedef struct {
   Obj obj;
   ObjFunction* function;
+
+  // Use a double pointer to upvalues since:
+  // 1. different closures have different numbers of upvalues, so we need a dynamic array of upvalues.
+  // 2. upvalues are dynamically allocated too.
+  ObjUpvalue** upvalues;
+  int upvalueCount;
 } ObjClosure;
 
 // Create a Lox function.
@@ -127,6 +142,9 @@ ObjString* takeString(char* chars, int length);
 // Copy the given characters into a heap-allocated,
 // string object. Null-terminate the string and return it.
 ObjString* copyString(const char* chars, int length);
+
+// Create an upvalue. Input is the address of the slot where the closed-over variable is stored.
+ObjUpvalue* newUpvalue(Value* slot);
 
 // Prints a string representation of an object.
 void printObject(Value value);

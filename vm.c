@@ -166,6 +166,11 @@ static bool callValue(Value callee, int argCount) {
   return false;
 }
 
+static ObjUpvalue* captureUpvalue(Value* local) {
+  ObjUpvalue* createdUpvalue = newUpvalue(local);
+  return createdUpvalue;
+}
+
 // In Lox, nil and false are falsey and everything else is truthy.
 static bool isFalsey(Value value) {
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
@@ -342,7 +347,16 @@ static InterpretResult run() {
                 }
                 break;
             }
-
+            case OP_GET_UPVALUE: {
+                uint8_t slot = READ_BYTE();
+                push(*frame->closure->upvalues[slot]->location);
+                break;
+            }
+            case OP_SET_UPVALUE: {
+                uint8_t slot = READ_BYTE();
+                *frame->closure->upvalues[slot]->location = peek(0);
+                break;
+            }
             // Equal can be evaluated on any pair of objects.
             case OP_EQUAL: {
                 Value b = pop();
@@ -429,6 +443,23 @@ static InterpretResult run() {
                 ObjFunction* function = AS_FUNCTION(READ_CONSTANT());
                 ObjClosure* closure = newClosure(function);
                 push(OBJ_VAL(closure));
+                // Check all the operands referencing upvalues after the closure instruction,
+                // to capture the corresponding upvalue.
+                for (int i = 0; i < closure->upvalueCount; i++) {
+                    uint8_t isLocal = READ_BYTE();
+                    uint8_t index = READ_BYTE();
+                    // If the upvalue closes over a local variable in
+                    // the enclosing function, capture it.
+                    if (isLocal) {
+                        closure->upvalues[i] = captureUpvalue(frame->slots + index);
+                    } else {
+                    // Otherwise, capture it from the surrounding function,
+                    // which is currently on the top of the callstack.
+                    // For more details, see:
+                    // https://craftinginterpreters.com/closures.html#upvalues-in-closures
+                        closure->upvalues[i] = frame->closure->upvalues[index];
+                    }
+                }
                 break;
             }
             case OP_RETURN: {
