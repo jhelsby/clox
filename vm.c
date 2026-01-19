@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 
 #include "common.h"
 #include "compiler.h"
@@ -14,6 +15,12 @@
 // simplifies the implementation. Probably not a
 // good idea for larger systems!
 VM vm;
+
+// Add native function returning current time.
+// This can be used as a template for adding further native functions.
+static Value clockNative(int argCount, Value* args) {
+  return NUMBER_VAL((double)clock() / CLOCKS_PER_SEC);
+}
 
 static void resetStack() {
     // Reset by setting the stack top to the beginning
@@ -74,6 +81,10 @@ void initVM() {
     // Initialise hash tables for chunk global variables and strings.
     initTable(&vm.globals);
     initTable(&vm.strings);
+
+    // Add native function returning current time.
+    // This can be used as a template for adding further native functions.
+    defineNative("clock", clockNative);
 }
 
 void freeVM() {
