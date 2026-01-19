@@ -23,16 +23,6 @@ static void resetStack() {
     vm.frameCount = 0;
 }
 
-void initVM() {
-    resetStack();
-    // Initially, no allocated objects.
-    vm.objects = NULL;
-
-    // Initialise hash tables for chunk global variables and strings.
-    initTable(&vm.globals);
-    initTable(&vm.strings);
-}
-
 // Call runtime errors with informative error reporting,
 // including the line number of the error.
 static void runtimeError(const char* format, ...) {
@@ -58,6 +48,32 @@ static void runtimeError(const char* format, ...) {
     }
 
     resetStack();
+}
+
+// Helper function to simplify defining native functions.
+static void defineNative(const char* name, NativeFn function) {
+  // Temporarily store the name and function on the stack to prevent them from
+  // being garbage collected before we store the function in a global variable.
+  // This is needed since copyString() and newNative() allocate memory dynamically.
+  push(OBJ_VAL(copyString(name, (int)strlen(name))));
+  push(OBJ_VAL(newNative(function)));
+
+  // Store the native function as a global variable.
+  tableSet(&vm.globals, AS_STRING(vm.stack[0]), vm.stack[1]);
+
+  // Remove the name and function from the stack.
+  pop();
+  pop();
+}
+
+void initVM() {
+    resetStack();
+    // Initially, no allocated objects.
+    vm.objects = NULL;
+
+    // Initialise hash tables for chunk global variables and strings.
+    initTable(&vm.globals);
+    initTable(&vm.strings);
 }
 
 void freeVM() {
@@ -119,6 +135,15 @@ static bool callValue(Value callee, int argCount) {
     switch (OBJ_TYPE(callee)) {
       case OBJ_FUNCTION:
         return call(AS_FUNCTION(callee), argCount);
+      case OBJ_NATIVE: {
+        // If we're calling a native function, just invoke the corresponding
+        // C function immediately and push the result onto the stack.
+        NativeFn native = AS_NATIVE(callee);
+        Value result = native(argCount, vm.stackTop - argCount);
+        vm.stackTop -= argCount + 1;
+        push(result);
+        return true;
+      }
       default:
         break; // Non-callable object type.
     }
@@ -390,8 +415,24 @@ static InterpretResult run() {
                 break;
             }
             case OP_RETURN: {
-                // Exit interpreter.
-                return INTERPRET_OK;
+                // Get the result of the value returned by the function and discard its CallFrame.
+                Value result = pop();
+                vm.frameCount--;
+
+                // If we've just discarded the only remaining CallFrame,
+                // we've finished executing the top-level code completely.
+                // Pop the main script function from the stack and exit the interpreter.
+                if (vm.frameCount == 0) {
+                    pop();
+                    return INTERPRET_OK;
+                }
+
+                // Otherwise, discard all the function's slots and push the
+                // returned value back to the top of the stack.
+                vm.stackTop = frame->slots;
+                push(result);
+                frame = &vm.frames[vm.frameCount - 1];
+                break;
             }
         }
     }

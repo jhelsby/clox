@@ -221,6 +221,10 @@ static int emitJump(uint8_t instruction) {
 
 // Append a return instruction to the chunk.
 static void emitReturn() {
+  // Handle the implicit function return case, where a function
+  // exits by reaching the end of its body.
+  emitByte(OP_NIL);
+
   emitByte(OP_RETURN);
 }
 
@@ -956,6 +960,24 @@ static void printStatement() {
   emitByte(OP_PRINT);
 }
 
+// Compile a return statement.
+static void returnStatement() {
+  // Only allow returning from a function.
+  if (current->type == TYPE_SCRIPT) {
+    error("Can't return from top-level code.");
+  }
+
+  // Handle the implicit function return case, where a function
+  // exits by reaching the end of its body.
+  if (match(TOKEN_SEMICOLON)) {
+    emitReturn();
+  } else {
+    expression();
+    consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
+    emitByte(OP_RETURN);
+  }
+}
+
 // Compile a while-statement. It works as follows:
 // - save the start location, so we can loop back if needed.
 // - check the while condition. If falsy, skip to the end.
@@ -1045,6 +1067,8 @@ static void statement() {
     forStatement();
   } else if (match(TOKEN_IF)) {
     ifStatement();
+  } else if (match(TOKEN_RETURN)) {
+    returnStatement();
   } else if (match(TOKEN_WHILE)) {
     whileStatement();
   // '{' initialises a new block, with its own scope.

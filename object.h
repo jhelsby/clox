@@ -23,10 +23,15 @@
 // Check if an object is of a certain object type.
 // This allows for safe casting between Obj and the ObjType.
 #define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
+#define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
 #define IS_STRING(value)       isObjType(value, OBJ_STRING)
 
 // Retrieve a value as an ObjFunction.
 #define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
+
+// Retrieve a value as an ObjNative.
+#define AS_NATIVE(value) \
+    (((ObjNative*)AS_OBJ(value))->function)
 
 // Retrieve a value as an ObjString.
 #define AS_STRING(value)       ((ObjString*)AS_OBJ(value))
@@ -38,6 +43,7 @@
 // so must be treated differently.
 typedef enum {
     OBJ_FUNCTION,
+    OBJ_NATIVE,
     OBJ_STRING,
 } ObjType;
 
@@ -62,6 +68,16 @@ typedef struct {
   ObjString* name;
 } ObjFunction;
 
+typedef Value (*NativeFn)(int argCount, Value* args);
+
+// Used to create native functions - Lox functions which
+// call native C code. These allow us to access OS operations,
+// e.g. reading user input and accessing the file system.
+typedef struct {
+  Obj obj;
+  NativeFn function;
+} ObjNative;
+
 // Standard implementation. A string object contains
 // a heap-allocated array of characters.
 struct ObjString {
@@ -85,6 +101,10 @@ struct ObjString {
 
 // Create a Lox function.
 ObjFunction* newFunction();
+
+// Create a Lox native function - a Lox function
+// which can call native C code, enabling e.g. syscalls.
+ObjNative* newNative(NativeFn function);
 
 // Claim ownership of the input C-string (reusing its memory)
 // and convert it to an ObjString.
