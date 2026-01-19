@@ -30,6 +30,14 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
 // Free an allocated object, and all memory associated with it.
 static void freeObject(Obj* object) {
     switch (object->type) {
+      case OBJ_CLOSURE: {
+        // Free the closure, but not the function.
+        // There may be multiple closures that all reference the same function,
+        // and we can only free the function once all of those closures are gone.
+        // The GC will handle freeing the function.
+        FREE(ObjClosure, object);
+        break;
+      }
       case OBJ_FUNCTION: {
         // Free the ObjFunction and any other memory it owns.
         ObjFunction* function = (ObjFunction*)object;

@@ -799,7 +799,10 @@ static void function(FunctionType type) {
   block();
 
   ObjFunction* function = endCompiler();
-  emitBytes(OP_CONSTANT, makeConstant(OBJ_VAL(function)));
+
+  // Wrap every function in a closure, regardless of if it contains
+  // any captured variables. This is inefficient but simple.
+  emitBytes(OP_CLOSURE, makeConstant(OBJ_VAL(function)));
 }
 
 // Parse a function declaration. We immediately set the
@@ -1099,6 +1102,8 @@ ObjFunction* compile(const char* source) {
   }
 
   // Return the compiled function, or indicate any errors.
+
   ObjFunction* function = endCompiler();
+
   return parser.hadError ? NULL : function;
 }

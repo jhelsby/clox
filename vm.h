@@ -11,10 +11,11 @@
 #define FRAMES_MAX 64
 #define STACK_MAX (FRAMES_MAX * UINT8_COUNT)
 
-// Store a function and its local variables.
+// Store a closure and its local variables.
+// (We wrap all functions in closures for simplicity.)
 // A frame on the call stack.
 typedef struct {
-  ObjFunction* function;
+  ObjClosure* closure;
   // Instruction pointer for the current function.
   uint8_t* ip;
   // Points to the first slot in the VM's value stack which this function can use.

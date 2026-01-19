@@ -74,6 +74,9 @@ typedef enum {
     // Indicate a function call.
     OP_CALL,
 
+    // Indicate that we should load a closure.
+    OP_CLOSURE,
+
     // Return from the current function.
     OP_RETURN,
 } OpCode;

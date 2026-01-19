@@ -22,11 +22,13 @@
 
 // Check if an object is of a certain object type.
 // This allows for safe casting between Obj and the ObjType.
+#define IS_CLOSURE(value)      isObjType(value, OBJ_CLOSURE)
 #define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
 #define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
 #define IS_STRING(value)       isObjType(value, OBJ_STRING)
 
 // Retrieve a value as an ObjFunction.
+#define AS_CLOSURE(value)      ((ObjClosure*)AS_OBJ(value))
 #define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
 
 // Retrieve a value as an ObjNative.
@@ -42,6 +44,7 @@
 // Different Obj types have distinct memory requirements,
 // so must be treated differently.
 typedef enum {
+    OBJ_CLOSURE,
     OBJ_FUNCTION,
     OBJ_NATIVE,
     OBJ_STRING,
@@ -99,8 +102,17 @@ struct ObjString {
     uint32_t hash;
 };
 
+// Used to create closures, consisting of a function and any captured local variables.
+typedef struct {
+  Obj obj;
+  ObjFunction* function;
+} ObjClosure;
+
 // Create a Lox function.
 ObjFunction* newFunction();
+
+// Create a closure, consisting of a function and any captured local variables.
+ObjClosure* newClosure(ObjFunction* function);
 
 // Create a Lox native function - a Lox function
 // which can call native C code, enabling e.g. syscalls.

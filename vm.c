@@ -43,7 +43,7 @@ static void runtimeError(const char* format, ...) {
     // (most recently called function to top-level code).
     for (int i = vm.frameCount - 1; i >= 0; i--) {
         CallFrame* frame = &vm.frames[i];
-        ObjFunction* function = frame->function;
+        ObjFunction* function = frame->closure->function;
         size_t instruction = frame->ip - function->chunk.code - 1;
         fprintf(stderr, "[line %d] in ",
                 function->chunk.lines[instruction]);
@@ -116,12 +116,13 @@ static Value peek(int distance) {
     return vm.stackTop[-1 - distance];
 }
 
-// Call a function with the specified number of arguments.
+// Call a closure with the specified number of arguments.
+// (We wrap all functions in closures for simplicity.)
 // Add its call frame to the stack.
-static bool call(ObjFunction* function, int argCount) {
-  if (argCount != function->arity) {
+static bool call(ObjClosure* closure, int argCount) {
+  if (argCount != closure->function->arity) {
     runtimeError("Expected %d arguments but got %d.",
-        function->arity, argCount);
+        closure->function->arity, argCount);
     return false;
   }
 
@@ -131,8 +132,8 @@ static bool call(ObjFunction* function, int argCount) {
   }
 
   CallFrame* frame = &vm.frames[vm.frameCount++];
-  frame->function = function;
-  frame->ip = function->chunk.code;
+  frame->closure = closure;
+  frame->ip = closure->function->chunk.code;
 
   // Offset by 1 because parameters are 1-indexed.
   frame->slots = vm.stackTop - argCount - 1;
@@ -144,8 +145,10 @@ static bool call(ObjFunction* function, int argCount) {
 static bool callValue(Value callee, int argCount) {
   if (IS_OBJ(callee)) {
     switch (OBJ_TYPE(callee)) {
-      case OBJ_FUNCTION:
-        return call(AS_FUNCTION(callee), argCount);
+      case OBJ_CLOSURE:
+        // Wrap every function in a closure, regardless of if it contains
+        // any captured variables. This is inefficient but simple.
+        return call(AS_CLOSURE(callee), argCount);
       case OBJ_NATIVE: {
         // If we're calling a native function, just invoke the corresponding
         // C function immediately and push the result onto the stack.
@@ -203,7 +206,7 @@ static InterpretResult run() {
     (uint16_t)((frame->ip[-2] << 8) | frame->ip[-1]))
 
 #define READ_CONSTANT() \
-    (frame->function->chunk.constants.values[READ_BYTE()])
+    (frame->closure->function->chunk.constants.values[READ_BYTE()])
 
 // Read a string operand. Note this is a one-byte value
 // which gets the given string from the chunk's constant table.
@@ -242,11 +245,8 @@ static InterpretResult run() {
 
         // Print the instruction being executed,
         // with its chunk offset.
-        disassembleInstruction(&frame->function->chunk,
-            // Convert the instruction pointer into
-            // a relative offset from the beginning
-            // of the chunk.
-            (int)(frame->ip - frame->function->chunk.code));
+        disassembleInstruction(&frame->closure->function->chunk,
+            (int)(frame->ip - frame->closure->function->chunk.code));
 #endif
 
         uint8_t instruction;
@@ -425,6 +425,12 @@ static InterpretResult run() {
                 frame = &vm.frames[vm.frameCount - 1];
                 break;
             }
+            case OP_CLOSURE: {
+                ObjFunction* function = AS_FUNCTION(READ_CONSTANT());
+                ObjClosure* closure = newClosure(function);
+                push(OBJ_VAL(closure));
+                break;
+            }
             case OP_RETURN: {
                 // Get the result of the value returned by the function and discard its CallFrame.
                 Value result = pop();
@@ -465,11 +471,22 @@ InterpretResult interpret(const char* source) {
 
     if (function == NULL) return INTERPRET_COMPILE_ERROR;
 
-    // Add the function to the value stack.
+    // Temporarily add the function to the value stack.
+    // This prevents the GC from deallocating it while we create
+    // the closure which will store it long-term.
     push(OBJ_VAL(function));
 
+    // Wrap all functions in a closure for simplicity, regardless
+    // of if they contain any captured variables.
+    ObjClosure* closure = newClosure(function);
+
+    // Now the closure has been created, remove the temporary function off the value stack.
+    pop();
+
+    push(OBJ_VAL(closure));
+
     // Add the call frame to the call stack.
-    call(function, 0);
+    call(closure, 0);
 
     return run();
 }
