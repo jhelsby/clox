@@ -81,6 +81,11 @@ typedef enum {
     // Indicate that we should load a closure.
     OP_CLOSURE,
 
+    // Indicate that we should move an upvalue from the stack to the heap.
+    // This happens if the local variable goes out of scope but has
+    // been closed over by a function which is still in scope.
+    OP_CLOSE_UPVALUE,
+
     // Return from the current function.
     OP_RETURN,
 } OpCode;

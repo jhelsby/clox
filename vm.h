@@ -43,6 +43,8 @@ typedef struct {
     // we can refer to both using the same memory address.
     Table strings;
 
+    ObjUpvalue* openUpvalues;
+
     // Head of our linked list of allocated Objs. For GC.
     Obj* objects;
 } VM;

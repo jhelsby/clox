@@ -28,6 +28,7 @@ static void resetStack() {
     // we can just overwrite them.
     vm.stackTop = vm.stack;
     vm.frameCount = 0;
+    vm.openUpvalues = NULL;
 }
 
 // Call runtime errors with informative error reporting,
@@ -167,8 +168,42 @@ static bool callValue(Value callee, int argCount) {
 }
 
 static ObjUpvalue* captureUpvalue(Value* local) {
+  // Before creating an upvalue, check if it already exists.
+  // If so, share it between the closures - a shared reference.
+  // THe list is sorted by slot number, hence why we can exit if
+  // upvalue -> location < local.
+  ObjUpvalue* prevUpvalue = NULL;
+  ObjUpvalue* upvalue = vm.openUpvalues;
+  while (upvalue != NULL && upvalue->location > local) {
+    prevUpvalue = upvalue;
+    upvalue = upvalue->next;
+  }
+
+  if (upvalue != NULL && upvalue->location == local) {
+    return upvalue;
+  }
+
   ObjUpvalue* createdUpvalue = newUpvalue(local);
+  createdUpvalue->next = upvalue;
+
+  if (prevUpvalue == NULL) {
+    vm.openUpvalues = createdUpvalue;
+  } else {
+    prevUpvalue->next = createdUpvalue;
+  }
   return createdUpvalue;
+}
+
+// Close every open upvalue it can find that points to a given slot.
+// For further information, see:
+// https://craftinginterpreters.com/closures.html#closing-upvalues-at-runtime
+static void closeUpvalues(Value* last) {
+  while (vm.openUpvalues != NULL && vm.openUpvalues->location >= last) {
+    ObjUpvalue* upvalue = vm.openUpvalues;
+    upvalue->closed = *upvalue->location;
+    upvalue->location = &upvalue->closed;
+    vm.openUpvalues = upvalue->next;
+  }
 }
 
 // In Lox, nil and false are falsey and everything else is truthy.
@@ -462,9 +497,17 @@ static InterpretResult run() {
                 }
                 break;
             }
+            case OP_CLOSE_UPVALUE:
+                // Put the upvalue (currently on the top of the stack) onto the heap.
+                closeUpvalues(vm.stackTop - 1);
+                // Remove it from the stack.
+                pop();
+                break;
             case OP_RETURN: {
                 // Get the result of the value returned by the function and discard its CallFrame.
                 Value result = pop();
+                // Close any remaining open upvalues owned by the returning function.
+                closeUpvalues(frame->slots);
                 vm.frameCount--;
 
                 // If we've just discarded the only remaining CallFrame,

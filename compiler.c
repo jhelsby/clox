@@ -57,9 +57,15 @@ typedef struct {
 // identifiers with a matching lexeme.
 typedef struct {
   Token name;
+
   // Record the scope depth of the local
   // variable's block, for faster resolution.
   int depth;
+
+  // Track if any function has closed over this variable.
+  // If it is, when the variable goes out of scope, we must
+  // move the corresponding upvalue from the stack to the heap.
+  bool isCaptured;
 } Local;
 
 // Store an upvalue, so we can find it when resolving it.
@@ -299,6 +305,7 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
   // to avoid nameclashing with user-defined functions.
   Local* local = &current->locals[current->localCount++];
   local->depth = 0;
+  local->isCaptured = false;
   local->name.start = "";
   local->name.length = 0;
 }
@@ -331,13 +338,20 @@ static void beginScope() {
 // - decrementing the compiler's current local variable depth.
 // - popping them from the stack.
 // - discarding them from our local variable list.
+// If the local variable has been captured, we must move the upvalue
+// from the stack to the heap so the closure can access it later.
 static void endScope() {
   current->scopeDepth--;
 
   while (current->localCount > 0 &&
          current->locals[current->localCount - 1].depth >
             current->scopeDepth) {
-    emitByte(OP_POP);
+    if (current->locals[current->localCount - 1].isCaptured) {
+      // If the local vairable
+      emitByte(OP_CLOSE_UPVALUE);
+    } else {
+      emitByte(OP_POP);
+    }
     current->localCount--;
   }
 }
@@ -438,6 +452,8 @@ static int resolveUpvalue(Compiler* compiler, Token* name) {
   // Ensure the variable isn't local.
   int local = resolveLocal(compiler->enclosing, name);
   if (local != -1) {
+    // Mark if the enclosing function captures this variable.
+    compiler->enclosing->locals[local].isCaptured = true;
     return addUpvalue(compiler, (uint8_t)local, true);
   }
 
@@ -468,6 +484,9 @@ static void addLocal(Token name) {
   // Set scope depth to -1 to indicate the variable is uninitialised.
   // Set it correctly once the variable's initializer has been compiled.
   local->depth = -1;
+
+  // On initialisation, no functions have closed over the variable.
+  local->isCaptured = false;
 }
 
 // For local variables, record the existence of the variable

@@ -111,6 +111,11 @@ typedef struct ObjUpvalue {
   // A reference to the variable associated with the upvalue.
   // This allows us to assign to the variable itself and not a copy.
   Value* location;
+  Value closed;
+  // We use a linked list to join our upvalues so we can efficiently sort
+  // them by stack slot order. For further details see:
+  // https://craftinginterpreters.com/closures.html#tracking-open-upvalues
+  struct ObjUpvalue* next;
 } ObjUpvalue;
 
 // Used to create closures, consisting of a function and any captured local variables.
