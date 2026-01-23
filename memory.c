@@ -3,9 +3,22 @@
 #include "memory.h"
 #include "vm.h"
 
+#ifdef DEBUG_LOG_GC
+#include <stdio.h>
+#include "debug.h"
+#endif
+
 // Handles all dynamic memory management in clox.
 // Uses a void* pointer so we can reallocate raw memory.
 void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
+  // If the "stress test" debug flag is set, run Lox's GC whenever we allocate new memory.
+  // Terrible for performance but useful for debugging the GC.
+  if (newSize > oldSize) {
+#ifdef DEBUG_STRESS_GC
+      collectGarbage();
+#endif
+    }
+
     if (newSize == 0) {
         free(pointer);
         return NULL;
@@ -29,6 +42,10 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
 
 // Free an allocated object, and all memory associated with it.
 static void freeObject(Obj* object) {
+#ifdef DEBUG_LOG_GC
+    printf("%p free type %d\n", (void*)object, object->type);
+#endif
+
     switch (object->type) {
       case OBJ_CLOSURE: {
         // Free the closure and all its upvalues, but not the associated function.
@@ -66,6 +83,17 @@ static void freeObject(Obj* object) {
         FREE(ObjUpvalue, object);
         break;
     }
+}
+
+// Call Lox's tracing garbage collector to clean up unreachable objects.
+void collectGarbage() {
+#ifdef DEBUG_LOG_GC
+  printf("-- gc begin\n");
+#endif
+
+#ifdef DEBUG_LOG_GC
+  printf("-- gc end\n");
+#endif
 }
 
 // Free all allocated objects, by traversing

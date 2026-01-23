@@ -35,6 +35,9 @@
 // in clox -  allocation, freeing, and reallocation.
 void* reallocate(void* pointer, size_t oldSize, size_t newSize);
 
+// Call Lox's tracing garbage collector to clean up unreachable objects.
+void collectGarbage();
+
 // Free all allocated objects.
 void freeObjects();
 
