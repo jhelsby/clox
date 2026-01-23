@@ -16,6 +16,10 @@ static Obj* allocateObject(size_t size, ObjType type) {
     Obj* object = (Obj*)reallocate(NULL, 0, size);
     object->type = type;
 
+    // When we create a new object, we don't know
+    // if it's reachable or not.
+    object->isMarked = false;
+
     // Each time we allocate an Obj, we insert it at the
     // head of our VM's linked list of allocated objects.
     object->next = vm.objects;

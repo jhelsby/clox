@@ -1,5 +1,6 @@
 #include <stdlib.h>
 
+#include "compiler.h"
 #include "memory.h"
 #include "vm.h"
 
@@ -38,6 +39,24 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
     if (result == NULL) exit(1);
 
     return result;
+}
+
+// Mark a Lox object as reachable for the GC.
+void markObject(Obj* object) {
+  if (object == NULL) return;
+
+#ifdef DEBUG_LOG_GC
+  printf("%p mark ", (void*)object);
+  printValue(OBJ_VAL(object));
+  printf("\n");
+#endif
+
+  object->isMarked = true;
+}
+
+// Mark a Lox value as reachable for the GC.
+void markValue(Value value) {
+  if (IS_OBJ(value)) markObject(AS_OBJ(value));
 }
 
 // Free an allocated object, and all memory associated with it.
@@ -85,11 +104,42 @@ static void freeObject(Obj* object) {
     }
 }
 
-// Call Lox's tracing garbage collector to clean up unreachable objects.
+// Mark all objects that are immediately reachable via the stack -
+// variables or temporaries.
+static void markRoots() {
+  for (Value* slot = vm.stack; slot < vm.stackTop; slot++) {
+    markValue(*slot);
+  }
+
+  // Mark objects contained in the VM's call frames.
+  // These store pointers to closures being called,
+  // and we must mark any constants and upvalues
+  // in these closures as reachable.
+  for (int i = 0; i < vm.frameCount; i++) {
+    markObject((Obj*)vm.frames[i].closure);
+  }
+
+  // Mark the open upvalue list as reachable.
+  for (ObjUpvalue* upvalue = vm.openUpvalues; upvalue != NULL; upvalue = upvalue->next) {
+    markObject((Obj*)upvalue);
+  }
+
+  // Mark global variables, which live in a hash table owned by the VM.
+  markTable(&vm.globals);
+
+  // Mark any values directly accessed by the compiler during compilation as reachable.
+  markCompilerRoots();
+}
+
+
+// Run a tracing garbage collection algorithm to clean up unreachable objects.
 void collectGarbage() {
 #ifdef DEBUG_LOG_GC
   printf("-- gc begin\n");
 #endif
+
+  // Mark all objects that are immediately reachable via the stack.
+  markRoots();
 
 #ifdef DEBUG_LOG_GC
   printf("-- gc end\n");

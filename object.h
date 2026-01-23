@@ -56,9 +56,13 @@ typedef enum {
 // garbage collection implementation.
 struct Obj {
     ObjType type;
+
+    // Whether the given object has been marked as
+    // reachable, and thus ineligible for GC cleanup.
+    bool isMarked;
+
     // For our GC to track all allocated objects,
     // each Obj is a node in a linked list of Objs.
-    // It tracks th
     struct Obj* next;
 };
 

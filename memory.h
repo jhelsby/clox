@@ -35,6 +35,12 @@
 // in clox -  allocation, freeing, and reallocation.
 void* reallocate(void* pointer, size_t oldSize, size_t newSize);
 
+// Mark a Lox object as reachable for the GC.
+void markObject(Obj* object);
+
+// Mark a Lox value as reachable for the GC.
+void markValue(Value value);
+
 // Call Lox's tracing garbage collector to clean up unreachable objects.
 void collectGarbage();
 
