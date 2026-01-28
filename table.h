@@ -47,6 +47,9 @@ void tableAddAll(Table* from, Table* to);
 ObjString* tableFindString(Table* table, const char* chars,
                            int length, uint32_t hash);
 
+// Free and delete all unmarked objects in a given table, for the GC.
+void tableRemoveWhite(Table* table);
+
 // Mark all the objects in a given hash table as reachable, for the GC.
 void markTable(Table* table);
 

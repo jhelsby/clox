@@ -223,6 +223,33 @@ static void traceReferences() {
   }
 }
 
+// Check every object in the heap by walking the linked list.
+// Remove any unmarked (i.e. unreachable) objects from the list and free their memory.
+// Reset any marked objects to unmarked for the next GC cycle.
+static void sweep() {
+  Obj* previous = NULL;
+  Obj* object = vm.objects;
+  while (object != NULL) {
+    if (object->isMarked) {
+      // Reset any marked objects to unmarked for the next GC cycle.
+      object->isMarked = false;
+
+      previous = object;
+      object = object->next;
+    } else {
+      Obj* unreached = object;
+      object = object->next;
+      if (previous != NULL) {
+        previous->next = object;
+      } else {
+        vm.objects = object;
+      }
+
+      freeObject(unreached);
+    }
+  }
+}
+
 // Run a tracing garbage collection algorithm to clean up unreachable objects.
 void collectGarbage() {
 #ifdef DEBUG_LOG_GC
@@ -234,6 +261,14 @@ void collectGarbage() {
 
   // Traverse the roots to find all reachable objects.
   traceReferences();
+
+  // Clean up the string pool, which needs special treatment because
+  // the string hash table always points to all the strings, so they are
+  // technically all reachable even if they aren't being used.
+  tableRemoveWhite(&vm.strings);
+
+  // Clean up all unreachable objects.
+  sweep();
 
 #ifdef DEBUG_LOG_GC
   printf("-- gc end\n");

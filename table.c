@@ -215,6 +215,16 @@ ObjString* tableFindString(Table* table, const char* chars,
   }
 }
 
+// Free and delete all unmarked objects in a given table, for the GC.
+void tableRemoveWhite(Table* table) {
+  for (int i = 0; i < table->capacity; i++) {
+    Entry* entry = &table->entries[i];
+    if (entry->key != NULL && !entry->key->obj.isMarked) {
+      tableDelete(table, entry->key);
+    }
+  }
+}
+
 // Mark all the objects in a given hash table as reachable, for the GC.
 void markTable(Table* table) {
   for (int i = 0; i < table->capacity; i++) {

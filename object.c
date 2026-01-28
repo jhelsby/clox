@@ -68,9 +68,18 @@ static ObjString* allocateString(char* chars, int length, uint32_t hash) {
     string->chars = chars;
     string->hash = hash;
 
+    // A new string isn't reachable, and resizing the string table can
+    // trigger a collection. We make it temporarily reachable by putting
+    // it on the stack before resizing the table to avoid memory bugs.
+    push(OBJ_VAL(string));
+
     // Whenever we create a new unique string,
     // add it to our string table for deduplication.
     tableSet(&vm.strings, string, NIL_VAL);
+
+    // Now the table has been resized, and contains the string,
+    // we don't need the string on the stack.
+    pop();
 
     return string;
 }
