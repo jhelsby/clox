@@ -79,6 +79,11 @@ void initVM() {
     // Initially, no allocated objects.
     vm.objects = NULL;
 
+    // No gray objects for the GC to clean up (see memory.c).
+    vm.grayCount = 0;
+    vm.grayCapacity = 0;
+    vm.grayStack = NULL;
+
     // Initialise hash tables for chunk global variables and strings.
     initTable(&vm.globals);
     initTable(&vm.strings);

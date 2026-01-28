@@ -47,6 +47,14 @@ typedef struct {
 
     // Head of our linked list of allocated Objs. For GC.
     Obj* objects;
+
+    // Store all gray objects to a worklist stack for easy access.
+    // We will process each object in turn.
+    // Gray in the sense of the tricolor abstraction -
+    // see markObject() in memory.c.
+    int grayCount;
+    int grayCapacity;
+    Obj** grayStack;
 } VM;
 
 // Used to set the exit code of a process

@@ -42,8 +42,24 @@ void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
 }
 
 // Mark a Lox object as reachable for the GC.
+// Use the tricolor abstraction. All objects have a colour:
+// - White: not reached or processed.
+// - Gray: reachable, but we haven't checked the objects
+//         it references to see if _they_ are reachable.
+// - Black: reachable and we've marked the objects it references.
+//
+// Everything starts white. Once we've done a full traversal,
+// everything will be either white or black. We clean up white
+// objects.
+//
+// Our algorithm satisfies the tricolor invariant:
+// no black node ever points to a white node.
+// This prevents reachable objects from being freed.
 void markObject(Obj* object) {
   if (object == NULL) return;
+
+  // Prevent infinite loops caused by cycles of object references.
+  if (object->isMarked) return;
 
 #ifdef DEBUG_LOG_GC
   printf("%p mark ", (void*)object);
@@ -52,11 +68,76 @@ void markObject(Obj* object) {
 #endif
 
   object->isMarked = true;
+
+  // Store all gray objects to a worklist stack for easy access.
+  // We will process each object in turn.
+  if (vm.grayCapacity < vm.grayCount + 1) {
+    vm.grayCapacity = GROW_CAPACITY(vm.grayCapacity);
+    // Use C's realloc instead of reallocate to prevent
+    // this GC operation from being managed by the GC,
+    // which could cause some recursive bugs.
+    vm.grayStack = (Obj**)realloc(vm.grayStack, sizeof(Obj*) * vm.grayCapacity);
+  }
+
+  vm.grayStack[vm.grayCount++] = object;
+
+  // Since we're using C's realloc we need to handle the case
+  // where allocating the gray stack fails. For the sake of
+  // simplicity here we just abort, since the gray stack
+  // is normally small, so such failures should be rare.
+  // However, something more elegant would be better.
+  if (vm.grayStack == NULL) exit(1);
 }
 
 // Mark a Lox value as reachable for the GC.
 void markValue(Value value) {
   if (IS_OBJ(value)) markObject(AS_OBJ(value));
+}
+
+// Mark all the constants in the function's constant table as reachable.
+static void markArray(ValueArray* array) {
+  for (int i = 0; i < array->count; i++) {
+    markValue(array->values[i]);
+  }
+}
+
+// Traverse an object and mark the objects it references as reachable.
+// In the tricolor abstraction, this is equivalent to marking an object as black.
+static void blackenObject(Obj* object) {
+#ifdef DEBUG_LOG_GC
+  printf("%p blacken ", (void*)object);
+  printValue(OBJ_VAL(object));
+  printf("\n");
+#endif
+  switch (object->type) {
+    case OBJ_CLOSURE: {
+      ObjClosure* closure = (ObjClosure*)object;
+      // Each closure references the function it wraps.
+      markObject((Obj*)closure->function);
+      // It also references an array of pointers to the upvalues it captures.
+      for (int i = 0; i < closure->upvalueCount; i++) {
+        markObject((Obj*)closure->upvalues[i]);
+      }
+      break;
+    }
+    case OBJ_FUNCTION: {
+      ObjFunction* function = (ObjFunction*)object;
+      // Each function has a reference to an ObjString containing the function's name.
+      markObject((Obj*)function->name);
+      // Mark all the constants in the function's constant table as reachable.
+      markArray(&function->chunk.constants);
+      break;
+    }
+    // Closed upvalues contain a reference to the closed-over value.
+    case OBJ_UPVALUE:
+      markValue(((ObjUpvalue*)object)->closed);
+      break;
+    // Strings and native function objects contain no outgoing
+    // references, so there's nothing to traverse.
+    case OBJ_NATIVE:
+    case OBJ_STRING:
+      break;
+  }
 }
 
 // Free an allocated object, and all memory associated with it.
@@ -131,6 +212,16 @@ static void markRoots() {
   markCompilerRoots();
 }
 
+// Traverse all gray objects to find all reachable objects.
+static void traceReferences() {
+  while (vm.grayCount > 0) {
+    // Pop the stack.
+    Obj* object = vm.grayStack[--vm.grayCount];
+
+    // Trace all of object's references and mark it as black.
+    blackenObject(object);
+  }
+}
 
 // Run a tracing garbage collection algorithm to clean up unreachable objects.
 void collectGarbage() {
@@ -140,6 +231,9 @@ void collectGarbage() {
 
   // Mark all objects that are immediately reachable via the stack.
   markRoots();
+
+  // Traverse the roots to find all reachable objects.
+  traceReferences();
 
 #ifdef DEBUG_LOG_GC
   printf("-- gc end\n");
@@ -155,4 +249,6 @@ void freeObjects() {
       freeObject(object);
       object = next;
     }
+
+    free(vm.grayStack);
   }
