@@ -161,6 +161,9 @@ static bool callValue(Value callee, int argCount) {
     switch (OBJ_TYPE(callee)) {
       case OBJ_BOUND_METHOD: {
         ObjBoundMethod* bound = AS_BOUND_METHOD(callee);
+        // When a method is called, the top of the stack contains all its arguments.
+        // The method itself is right below these.
+        vm.stackTop[-argCount - 1] = bound->receiver;
         return call(bound->method, argCount);
       }
       case OBJ_CLASS: {

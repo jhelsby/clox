@@ -81,6 +81,7 @@ typedef struct {
 // versus the body of a function.
 typedef enum {
   TYPE_FUNCTION,
+  TYPE_METHOD,
   TYPE_SCRIPT // Top-level code.
 } FunctionType;
 
@@ -115,6 +116,11 @@ typedef struct Compiler {
   int scopeDepth;
 } Compiler;
 
+// Track the current, innermost class being compiled.
+typedef struct ClassCompiler {
+  struct ClassCompiler* enclosing;
+} ClassCompiler;
+
 Parser parser;
 
 // Global variable pointing to the compiler.
@@ -124,6 +130,11 @@ Parser parser;
 // the compiler when we initialise the VM and
 // pass it as an argument to all frontend functions.
 Compiler* current = NULL;
+
+// Track the nearest enclosing class. We use this
+// for inheritance, and also to determine if we are
+// inside a method for the 'this' keyword.
+ClassCompiler* currentClass = NULL;
 
 // Store the chunk currently being compiled.
 // Gets set at the beginning of compile().
@@ -307,8 +318,13 @@ static void initCompiler(Compiler* compiler, FunctionType type) {
   Local* local = &current->locals[current->localCount++];
   local->depth = 0;
   local->isCaptured = false;
-  local->name.start = "";
-  local->name.length = 0;
+  if (type != TYPE_FUNCTION) {
+    local->name.start = "this";
+    local->name.length = 4;
+  } else {
+    local->name.start = "";
+    local->name.length = 0;
+  }
 }
 
 // Completes a compiled chunk by adding
@@ -732,11 +748,26 @@ static void namedVariable(Token name, bool canAssign) {
   }
 }
 
-
 // Compile a variable. Flag when it
 // is permitted to assign it a value.
 static void variable(bool canAssign) {
   namedVariable(parser.previous, canAssign);
+}
+
+// Compile a 'this' keyword - a reference to a method's receiver.
+// This allows the receiving class instance to be accessed
+// inside the body of a method.
+// We treat it as an unassignable variable, so we can reuse our
+// variable logic for closures, and other useful behaviour.
+static void this_(bool canAssign) {
+  // Our class compiler tracks the innermost class.
+  // If null, there are no enclosing classes.
+  if (currentClass == NULL) {
+    error("Can't use 'this' outside of a class.");
+    return;
+  }
+
+  variable(false);
 }
 
 // Compile a unary operator and its operand.
@@ -807,8 +838,7 @@ ParseRule rules[] = {
   [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
   [TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_THIS]          = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_TRUE]          = {literal,  NULL,   PREC_NONE},
+  [TOKEN_THIS]          = {this_,    NULL,   PREC_NONE},  [TOKEN_TRUE]          = {literal,  NULL,   PREC_NONE},
   [TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_ERROR]         = {NULL,     NULL,   PREC_NONE},
@@ -920,7 +950,7 @@ static void method() {
   uint8_t constant = identifierConstant(&parser.previous);
 
   // Get the closure associated with the method.
-  FunctionType type = TYPE_FUNCTION;
+  FunctionType type = TYPE_METHOD; // Enable use of 'this' keyword.
   function(type);
 
 
@@ -937,6 +967,12 @@ static void classDeclaration() {
   emitBytes(OP_CLASS, nameConstant);
   defineVariable(nameConstant);
 
+  // Include the newly created class in the ClassCompiler,
+  // since this class is now the innermost class.
+  ClassCompiler classCompiler;
+  classCompiler.enclosing = currentClass;
+  currentClass = &classCompiler;
+
   // Load the class onto the top of the stack, so we can
   // easily bind all its methods to the class in method().
   namedVariable(className, false);
@@ -952,6 +988,10 @@ static void classDeclaration() {
   // Now we've bound all its methods,
   // remove the class from the top of the stack.
   emitByte(OP_POP);
+
+  // Restore the enclosing class, since we're done with this class.
+  // Note this sets currentClass to NULL if we are inside a top-level class.
+  currentClass = currentClass->enclosing;
 }
 
 // Parse a function declaration. We immediately set the
