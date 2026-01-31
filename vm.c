@@ -224,6 +224,18 @@ static void closeUpvalues(Value* last) {
   }
 }
 
+// Bind a method to a class. Assume the method closure is on
+// top of the stack, and the class is second in the stack.
+// This is consistent with classDeclaration() and method() in compiler.c.
+static void defineMethod(ObjString* name) {
+  Value method = peek(0);
+  ObjClass* klass = AS_CLASS(peek(1));
+  tableSet(&klass->methods, name, method);
+
+  // Pop the method closure once we're done.
+  pop();
+}
+
 // In Lox, nil and false are falsey and everything else is truthy.
 static bool isFalsey(Value value) {
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
@@ -595,6 +607,9 @@ static InterpretResult run() {
             }
             case OP_CLASS:
                 push(OBJ_VAL(newClass(READ_STRING())));
+                break;
+            case OP_METHOD:
+                defineMethod(READ_STRING());
                 break;
         }
     }

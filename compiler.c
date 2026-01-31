@@ -911,17 +911,47 @@ static void function(FunctionType type) {
   }
 }
 
+// Parse a method. Only called in classDeclaration(), which
+// puts the class on the top of the stack to easily bind it to its methods.
+// Thus, method() assumes class is on the top of the stack.
+static void method() {
+  // Get the method's name.
+  consume(TOKEN_IDENTIFIER, "Expect method name.");
+  uint8_t constant = identifierConstant(&parser.previous);
+
+  // Get the closure associated with the method.
+  FunctionType type = TYPE_FUNCTION;
+  function(type);
+
+
+  emitBytes(OP_METHOD, constant);
+}
+
 // Parse a class declaration.
 static void classDeclaration() {
   consume(TOKEN_IDENTIFIER, "Expect class name.");
+  Token className = parser.previous;
   uint8_t nameConstant = identifierConstant(&parser.previous);
   declareVariable();
 
   emitBytes(OP_CLASS, nameConstant);
   defineVariable(nameConstant);
 
+  // Load the class onto the top of the stack, so we can
+  // easily bind all its methods to the class in method().
+  namedVariable(className, false);
+
   consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
+  // Parse any and all methods in the class body.
+  // (Lox doesn't support field declarations.)
+  while (!check(TOKEN_RIGHT_BRACE) && !check(TOKEN_EOF)) {
+    method();
+  }
   consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
+
+  // Now we've bound all its methods,
+  // remove the class from the top of the stack.
+  emitByte(OP_POP);
 }
 
 // Parse a function declaration. We immediately set the

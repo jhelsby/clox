@@ -95,6 +95,9 @@ typedef enum {
 
     // Create a class.
     OP_CLASS,
+
+    // Bind a method to the most recently created class.
+    OP_METHOD
 } OpCode;
 
 // Dynamic array storing a chunk of bytecode instructions.

@@ -36,6 +36,7 @@ ObjClass* newClass(ObjString* name) {
   // Use klass since class is reserved in C++.
   ObjClass* klass = ALLOCATE_OBJ(ObjClass, OBJ_CLASS);
   klass->name = name;
+  initTable(&klass->methods);
   return klass;
 }
 
