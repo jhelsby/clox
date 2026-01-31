@@ -96,6 +96,13 @@ void initVM() {
     initTable(&vm.globals);
     initTable(&vm.strings);
 
+    // The copyString() call below allocates memory, which can trigger a GC.
+    // Set vm.initString to null to avoid trying to read an uninitialised variable.
+    vm.initString = NULL;
+
+    // Standard string to use for init() methods in classes.
+    vm.initString = copyString("init", 4);
+
     // Add native function returning current time.
     // This can be used as a template for adding further native functions.
     defineNative("clock", clockNative);
@@ -104,6 +111,9 @@ void initVM() {
 void freeVM() {
     freeTable(&vm.globals);
     freeTable(&vm.strings);
+
+    // Clear the init string pointer, since freeObjects() will free its ObjString.
+    vm.initString = NULL;
 
     // Free all allocated objects when a program terminates.
     freeObjects();
@@ -169,6 +179,18 @@ static bool callValue(Value callee, int argCount) {
       case OBJ_CLASS: {
         ObjClass* klass = AS_CLASS(callee);
         vm.stackTop[-argCount - 1] = OBJ_VAL(newInstance(klass));
+
+        // Automatically call init() on new instances, if such a method exists.
+        Value initializer;
+        if (tableGet(&klass->methods, vm.initString, &initializer)) {
+          return call(AS_CLOSURE(initializer), argCount);
+        } else if (argCount != 0) {
+          // If there's no init method but the class was called with arguments,
+          // this call is undefined. Report a runtime error.
+          runtimeError("Expected 0 arguments but got %d.", argCount);
+          return false;
+
+          }
         return true;
       }
       case OBJ_CLOSURE:

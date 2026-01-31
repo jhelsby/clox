@@ -43,6 +43,9 @@ typedef struct {
     // we can refer to both using the same memory address.
     Table strings;
 
+    // Standard string to use for init() methods in classes.
+    ObjString* initString;
+
     ObjUpvalue* openUpvalues;
 
     // Track the amount of live memory. The more live memory,

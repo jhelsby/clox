@@ -259,6 +259,9 @@ static void markRoots() {
 
   // Mark any values directly accessed by the compiler during compilation as reachable.
   markCompilerRoots();
+
+  // Our 'init' method string is special, so should always be a root.
+  markObject((Obj*)vm.initString);
 }
 
 // Traverse all gray objects to find all reachable objects.

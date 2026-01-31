@@ -81,6 +81,7 @@ typedef struct {
 // versus the body of a function.
 typedef enum {
   TYPE_FUNCTION,
+  TYPE_INITIALIZER,
   TYPE_METHOD,
   TYPE_SCRIPT // Top-level code.
 } FunctionType;
@@ -255,7 +256,13 @@ static int emitJump(uint8_t instruction) {
 static void emitReturn() {
   // Handle the implicit function return case, where a function
   // exits by reaching the end of its body.
-  emitByte(OP_NIL);
+  if (current->type == TYPE_INITIALIZER) {
+    // If 'init', return the instance, stored in slot zero..
+    emitBytes(OP_GET_LOCAL, 0);
+  } else {
+    // Otherwise, return nothing.
+    emitByte(OP_NIL);
+  }
 
   emitByte(OP_RETURN);
 }
@@ -950,7 +957,15 @@ static void method() {
   uint8_t constant = identifierConstant(&parser.previous);
 
   // Get the closure associated with the method.
+
   FunctionType type = TYPE_METHOD; // Enable use of 'this' keyword.
+
+  // Check if the method is the special 'init' method.
+  if (parser.previous.length == 4 &&
+      memcmp(parser.previous.start, "init", 4) == 0) {
+    type = TYPE_INITIALIZER;
+  }
+
   function(type);
 
 
@@ -1164,6 +1179,10 @@ static void returnStatement() {
   if (match(TOKEN_SEMICOLON)) {
     emitReturn();
   } else {
+    if (current->type == TYPE_INITIALIZER) {
+      error("Can't return a value from an initializer.");
+    }
+
     expression();
     consume(TOKEN_SEMICOLON, "Expect ';' after return value.");
     emitByte(OP_RETURN);
