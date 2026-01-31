@@ -9,15 +9,29 @@
 #include "debug.h"
 #endif
 
+// The threshold is a multiple of the heap size.
+// The more live memory,
+// the less often we trigger the GC, to avoid scanning live
+// objects unnecessarily.
+#define GC_HEAP_GROW_FACTOR 2
+
 // Handles all dynamic memory management in clox.
 // Uses a void* pointer so we can reallocate raw memory.
 void* reallocate(void* pointer, size_t oldSize, size_t newSize) {
+  // Track live memory.
+  vm.bytesAllocated += newSize - oldSize;
+
   // If the "stress test" debug flag is set, run Lox's GC whenever we allocate new memory.
   // Terrible for performance but useful for debugging the GC.
   if (newSize > oldSize) {
 #ifdef DEBUG_STRESS_GC
       collectGarbage();
 #endif
+    }
+
+    // Trigger the GC once live memory exceeds a threshold.
+    if (vm.bytesAllocated > vm.nextGC) {
+      collectGarbage();
     }
 
     if (newSize == 0) {
@@ -254,6 +268,7 @@ static void sweep() {
 void collectGarbage() {
 #ifdef DEBUG_LOG_GC
   printf("-- gc begin\n");
+  size_t before = vm.bytesAllocated;
 #endif
 
   // Mark all objects that are immediately reachable via the stack.
@@ -270,8 +285,14 @@ void collectGarbage() {
   // Clean up all unreachable objects.
   sweep();
 
+  // Sweeping reduces live memory, so recalculate our GC trigger threshold.
+  vm.nextGC = vm.bytesAllocated * GC_HEAP_GROW_FACTOR;
+
 #ifdef DEBUG_LOG_GC
   printf("-- gc end\n");
+  printf("   collected %zu bytes (from %zu to %zu) next at %zu\n",
+         before - vm.bytesAllocated, before, vm.bytesAllocated,
+         vm.nextGC);
 #endif
 }
 

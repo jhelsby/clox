@@ -79,6 +79,14 @@ void initVM() {
     // Initially, no allocated objects.
     vm.objects = NULL;
 
+
+    // Track the amount of live memory. The more live memory,
+    // the less often we trigger the GC, to avoid scanning live
+    // objects unnecessarily.
+    // When bytesAllocated exceeds nextGC, trigger the GC.
+    vm.bytesAllocated = 0;
+    vm.nextGC = 1024 * 1024;
+
     // No gray objects for the GC to clean up (see memory.c).
     vm.grayCount = 0;
     vm.grayCapacity = 0;

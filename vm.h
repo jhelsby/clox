@@ -45,6 +45,14 @@ typedef struct {
 
     ObjUpvalue* openUpvalues;
 
+    // Track the amount of live memory. The more live memory,
+    // the less often we trigger the GC, to avoid scanning live
+    // objects unnecessarily.
+    size_t bytesAllocated;
+
+    // Threshold - once bytesAllocated exceeds this number, trigger the GC.
+    size_t nextGC;
+
     // Head of our linked list of allocated Objs. For GC.
     Obj* objects;
 
