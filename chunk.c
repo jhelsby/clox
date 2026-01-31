@@ -2,6 +2,7 @@
 
 #include "chunk.h"
 #include "memory.h"
+#include "vm.h"
 
 void initChunk(Chunk* chunk) {
     chunk->count = 0;
@@ -55,6 +56,18 @@ void freeChunk(Chunk* chunk) {
 // Add a new constant to the chunk's constant pool.
 // Returns the index the constant was stored at.
 int addConstant(Chunk* chunk, Value value) {
+    // writeValueArray may call reallocate(), which will trigger a GC.
+    // We must ensure the constant is stored on the Lox stack first
+    // to prevent it from being cleaned up by the GC before we write it
+    // to the constant pool. See:
+    // https://craftinginterpreters.com/garbage-collection.html#adding-to-the-constant-table
+    push(value);
+
     writeValueArray(&chunk->constants, value);
+
+    // Once the value has been written, we no longer need on the stack -
+    // the GC will find it in the constant pool.
+    pop();
+
     return chunk->constants.count - 1;
 }

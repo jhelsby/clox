@@ -227,8 +227,11 @@ static bool isFalsey(Value value) {
 // Concatenate two strings, assuming the top two frames
 // on the stack are ObjStrings.
 static void concatenate() {
-    ObjString* b = AS_STRING(pop());
-    ObjString* a = AS_STRING(pop());
+    // To concatenate the strings we must reallocate memory for the new string.
+    // This can trigger the GC. We peek them to keep them on the stack,
+    // to prevent them being cleaned up prematurely.
+    ObjString* b = AS_STRING(peek(0));
+    ObjString* a = AS_STRING(peek(1));
 
     int length = a->length + b->length;
     char* chars = ALLOCATE(char, length + 1);
@@ -236,10 +239,15 @@ static void concatenate() {
     memcpy(chars + a->length, b->chars, b->length);
     chars[length] = '\0';
 
-    // Reuse the chars C-strxing array we heap allocated
+    // Reuse the chars C-string array we heap allocated
     // to output the ObjString result. This avoids having
     // to make another copy and free chars.
     ObjString* result = takeString(chars, length);
+
+    // Now we're done with the original strings, we can pop them off the
+    // stack to be cleaned up by the GC.
+    pop();
+    pop();
 
     push(OBJ_VAL(result));
 }
