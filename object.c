@@ -32,6 +32,20 @@ static Obj* allocateObject(size_t size, ObjType type) {
     return object;
 }
 
+// When we bind a method from an instance of a class, we want
+// the method to remember which instance it came from.
+// For this we use bound methods, inspired by CPython.
+//
+// This function just stores the given closure and receiver.
+ObjBoundMethod* newBoundMethod(Value receiver,
+                               ObjClosure* method) {
+  ObjBoundMethod* bound = ALLOCATE_OBJ(ObjBoundMethod,
+                                       OBJ_BOUND_METHOD);
+  bound->receiver = receiver;
+  bound->method = method;
+  return bound;
+}
+
 ObjClass* newClass(ObjString* name) {
   // Use klass since class is reserved in C++.
   ObjClass* klass = ALLOCATE_OBJ(ObjClass, OBJ_CLASS);
@@ -166,6 +180,9 @@ static void printFunction(ObjFunction* function) {
 // Prints a string representation of an object.
 void printObject(Value value) {
     switch (OBJ_TYPE(value)) {
+        case OBJ_BOUND_METHOD:
+            printFunction(AS_BOUND_METHOD(value)->method->function);
+            break;
         case OBJ_CLASS:
             // Print the class's name.
             printf("%s", AS_CLASS(value)->name->chars);

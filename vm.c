@@ -159,6 +159,10 @@ static bool call(ObjClosure* closure, int argCount) {
 static bool callValue(Value callee, int argCount) {
   if (IS_OBJ(callee)) {
     switch (OBJ_TYPE(callee)) {
+      case OBJ_BOUND_METHOD: {
+        ObjBoundMethod* bound = AS_BOUND_METHOD(callee);
+        return call(bound->method, argCount);
+      }
       case OBJ_CLASS: {
         ObjClass* klass = AS_CLASS(callee);
         vm.stackTop[-argCount - 1] = OBJ_VAL(newInstance(klass));
@@ -183,6 +187,29 @@ static bool callValue(Value callee, int argCount) {
   }
   runtimeError("Can only call functions and classes.");
   return false;
+}
+
+// Retrieve a method from a class's method table,
+// and wrap it in a new ObjBoundMethod along with the receiver.
+// Put it on the top of the stack.
+// If no such method exists return false
+// - we use this to report a runtime error in run().
+static bool bindMethod(ObjClass* klass, ObjString* name) {
+  Value method;
+  if (!tableGet(&klass->methods, name, &method)) {
+    runtimeError("Undefined property '%s'.", name->chars);
+    return false;
+  }
+
+  // Retrieve the receiver from the top of the stack.
+  ObjBoundMethod* bound = newBoundMethod(peek(0), AS_CLOSURE(method));
+
+  // Pop the instance (receiver).
+  pop();
+
+  // Add bound to the stop of the stack.
+  push(OBJ_VAL(bound));
+  return true;
 }
 
 static ObjUpvalue* captureUpvalue(Value* local) {
@@ -448,8 +475,11 @@ static InterpretResult run() {
                     push(value);
                     break;
                 }
-                runtimeError("Undefined property '%s'.", name->chars);
-                return INTERPRET_RUNTIME_ERROR;
+                // Check if the instance has a method with the given name.
+                if (!bindMethod(instance->klass, name)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
             }
             // Set a method or field on a class instance.
             case OP_SET_PROPERTY: {
