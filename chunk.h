@@ -45,6 +45,10 @@ typedef enum {
     OP_GET_UPVALUE,
     OP_SET_UPVALUE,
 
+    // Getters and setters for fields and methods in classes.
+    OP_GET_PROPERTY,
+    OP_SET_PROPERTY,
+
     // Operators that return booleans.
     OP_EQUAL,
     OP_GREATER,

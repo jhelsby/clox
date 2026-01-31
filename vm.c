@@ -418,6 +418,48 @@ static InterpretResult run() {
                 *frame->closure->upvalues[slot]->location = peek(0);
                 break;
             }
+            // Get a method or field from a class instance.
+            // Throw a runtime error if it can't be found.
+            case OP_GET_PROPERTY: {
+                // Forbid getters on strings, numbers, etc.
+                // Instances only.
+                if (!IS_INSTANCE(peek(0))) {
+                    runtimeError("Only instances have properties.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                ObjInstance* instance = AS_INSTANCE(peek(0));
+                ObjString* name = READ_STRING();
+
+                Value value;
+                if (tableGet(&instance->fields, name, &value)) {
+                    pop(); // Instance.
+                    push(value);
+                    break;
+                }
+                runtimeError("Undefined property '%s'.", name->chars);
+                return INTERPRET_RUNTIME_ERROR;
+            }
+            // Set a method or field on a class instance.
+            case OP_SET_PROPERTY: {
+                if (!IS_INSTANCE(peek(1))) {
+                    runtimeError("Only instances have fields.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                ObjInstance* instance = AS_INSTANCE(peek(1));
+                tableSet(&instance->fields, READ_STRING(), peek(0));
+
+                // We want to pop the instance, but it's second in the stack. So...
+
+                // 1. Pop the value.
+                Value value = pop();
+
+                // 2. Pop the instance.
+                pop();
+
+                // 3. Put the value back on the stack.
+                push(value);
+                break;
+            }
             // Equal can be evaluated on any pair of objects.
             case OP_EQUAL: {
                 Value b = pop();
