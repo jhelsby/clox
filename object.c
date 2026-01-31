@@ -32,6 +32,13 @@ static Obj* allocateObject(size_t size, ObjType type) {
     return object;
 }
 
+ObjClass* newClass(ObjString* name) {
+  // Use klass since class is reserved in C++.
+  ObjClass* klass = ALLOCATE_OBJ(ObjClass, OBJ_CLASS);
+  klass->name = name;
+  return klass;
+}
+
 ObjClosure* newClosure(ObjFunction* function) {
   // When we create an ObjClosure, allocate an upvalue array of the proper size (which was determined at compile time).
   ObjUpvalue** upvalues = ALLOCATE(ObjUpvalue*, function->upvalueCount);
@@ -150,6 +157,10 @@ static void printFunction(ObjFunction* function) {
 // Prints a string representation of an object.
 void printObject(Value value) {
     switch (OBJ_TYPE(value)) {
+        case OBJ_CLASS:
+            // Print the class's name.
+            printf("%s", AS_CLASS(value)->name->chars);
+            break;
         case OBJ_CLOSURE:
             // Print the closure's name.
             printFunction(AS_CLOSURE(value)->function);

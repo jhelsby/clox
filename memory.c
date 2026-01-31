@@ -124,6 +124,11 @@ static void blackenObject(Obj* object) {
   printf("\n");
 #endif
   switch (object->type) {
+    case OBJ_CLASS: {
+      ObjClass* klass = (ObjClass*)object;
+      markObject((Obj*)klass->name);
+      break;
+    }
     case OBJ_CLOSURE: {
       ObjClosure* closure = (ObjClosure*)object;
       // Each closure references the function it wraps.
@@ -161,6 +166,10 @@ static void freeObject(Obj* object) {
 #endif
 
     switch (object->type) {
+      case OBJ_CLASS: {
+        FREE(ObjClass, object);
+        break;
+      }
       case OBJ_CLOSURE: {
         // Free the closure and all its upvalues, but not the associated function.
         // There may be multiple closures that all reference the same function,

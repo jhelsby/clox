@@ -22,12 +22,14 @@
 
 // Check if an object is of a certain object type.
 // This allows for safe casting between Obj and the ObjType.
+#define IS_CLASS(value)        isObjType(value, OBJ_CLASS)
 #define IS_CLOSURE(value)      isObjType(value, OBJ_CLOSURE)
 #define IS_FUNCTION(value)     isObjType(value, OBJ_FUNCTION)
 #define IS_NATIVE(value)       isObjType(value, OBJ_NATIVE)
 #define IS_STRING(value)       isObjType(value, OBJ_STRING)
 
 // Retrieve a value as an ObjFunction.
+#define AS_CLASS(value)        ((ObjClass*)AS_OBJ(value))
 #define AS_CLOSURE(value)      ((ObjClosure*)AS_OBJ(value))
 #define AS_FUNCTION(value)     ((ObjFunction*)AS_OBJ(value))
 
@@ -44,6 +46,7 @@
 // Different Obj types have distinct memory requirements,
 // so must be treated differently.
 typedef enum {
+    OBJ_CLASS,
     OBJ_CLOSURE,
     OBJ_FUNCTION,
     OBJ_NATIVE,
@@ -134,8 +137,17 @@ typedef struct {
   int upvalueCount;
 } ObjClosure;
 
+// Create Lox classes.
+typedef struct {
+  Obj obj;
+  ObjString* name;
+} ObjClass;
+
 // Create a Lox function.
 ObjFunction* newFunction();
+
+// Create a class, consisting of a name, fields, and methods.
+ObjClass* newClass(ObjString* name);
 
 // Create a closure, consisting of a function and any captured local variables.
 ObjClosure* newClosure(ObjFunction* function);
