@@ -88,6 +88,9 @@ typedef enum {
 
     // Return from the current function.
     OP_RETURN,
+
+    // Create a class.
+    OP_CLASS,
 } OpCode;
 
 // Dynamic array storing a chunk of bytecode instructions.

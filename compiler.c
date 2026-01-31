@@ -898,6 +898,19 @@ static void function(FunctionType type) {
   }
 }
 
+// Parse a class declaration.
+static void classDeclaration() {
+  consume(TOKEN_IDENTIFIER, "Expect class name.");
+  uint8_t nameConstant = identifierConstant(&parser.previous);
+  declareVariable();
+
+  emitBytes(OP_CLASS, nameConstant);
+  defineVariable(nameConstant);
+
+  consume(TOKEN_LEFT_BRACE, "Expect '{' before class body.");
+  consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
+}
+
 // Parse a function declaration. We immediately set the
 // function variable as "initialized" to the function
 // to call itself recursively using its name.
@@ -1139,7 +1152,9 @@ static void synchronize() {
 // Will eventually parse all declarations:
 // classDecl, funDecl, varDecl, and statement.
 static void declaration() {
-  if (match(TOKEN_FUN)) {
+  if (match(TOKEN_CLASS)) {
+    classDeclaration();
+  } else if (match(TOKEN_FUN)) {
     funDeclaration();
   } else if (match(TOKEN_VAR)) {
     varDeclaration();
