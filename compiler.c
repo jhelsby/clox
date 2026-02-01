@@ -793,11 +793,19 @@ static void super_(bool canAssign) {
   // Push the current receiver, "this", onto the stack.
   namedVariable(syntheticToken("this"), false);
 
-  // Get the receiver's parent, "super", onto the stack.
-  namedVariable(syntheticToken("super"), false);
+  if (match(TOKEN_LEFT_PAREN)) {
+    // If we immediately call the method, compile the method call directly.
+    uint8_t argCount = argumentList();
+    namedVariable(syntheticToken("super"), false);
+    emitBytes(OP_SUPER_INVOKE, name);
+    emitByte(argCount);
+  } else {
+    // Get the receiver's parent, "super", onto the stack.
+    namedVariable(syntheticToken("super"), false);
 
-  // Get the method name from that "super" parent. Encode this as an operand.
-  emitBytes(OP_GET_SUPER, name);
+    // Get the method name from that "super" parent. Encode this as an operand.
+    emitBytes(OP_GET_SUPER, name);
+  }
 }
 
 // Compile a 'this' keyword - a reference to a method's receiver.

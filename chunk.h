@@ -89,6 +89,9 @@ typedef enum {
     // instead of first creating an ObjBoundMethod and then calling it.
     OP_INVOKE,
 
+    // Optimise calling a super method if called directly, similar to INVOKE.
+    OP_SUPER_INVOKE,
+
     // Indicate that we should load a closure.
     OP_CLOSURE,
 
