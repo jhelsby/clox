@@ -1,4 +1,4 @@
-// Used for testing my WIP clox compiler.
+// Used for testing my clox compiler.
 
 4 + 0.4;
 "Parser testing";
