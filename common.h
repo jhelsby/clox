@@ -17,10 +17,10 @@
 // "Stress test" mode for Lox's garbage collector.
 // When defined, the GC runs as often as possible.
 // Terrible for performance but useful for debugging the GC.
-#define DEBUG_STRESS_GC
+// #define DEBUG_STRESS_GC
 
 // Flag to print logs every time the GC does something.
-#define DEBUG_LOG_GC
+// #define DEBUG_LOG_GC
 
 // The number of things we can encode in a byte.
 #define UINT8_COUNT (UINT8_MAX + 1)
