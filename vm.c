@@ -716,6 +716,26 @@ static InterpretResult run() {
             case OP_CLASS:
                 push(OBJ_VAL(newClass(READ_STRING())));
                 break;
+            // Bind a superclass to a subclass for inheritance.
+            // The superclass should be second on the stack, and the subclass at the top.
+            case OP_INHERIT: {
+                Value superclass = peek(1);
+                if (!IS_CLASS(superclass)) {
+                    runtimeError("Superclass must be a class.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                ObjClass* subclass = AS_CLASS(peek(0));
+
+                // Copy all the superclass's methods into the subclass method table for easy, efficient access.
+                // This can be called "copy-down inheritance", and works here because
+                // the set of methods for a class can never change following its declaration.
+                // This prevents the superclass from having new methods added, which the subclass couldn't access via this approach.
+                tableAddAll(&AS_CLASS(superclass)->methods,
+                            &subclass->methods);
+                pop(); // Subclass.
+                break;
+            }
             case OP_METHOD:
                 defineMethod(READ_STRING());
                 break;

@@ -994,6 +994,24 @@ static void classDeclaration() {
   classCompiler.enclosing = currentClass;
   currentClass = &classCompiler;
 
+  // Check if the class inherits from a superclass: class Subclass < Superclass {}.
+  if (match(TOKEN_LESS)) {
+    consume(TOKEN_IDENTIFIER, "Expect superclass name.");
+
+    // Looks up the superclass by name and pushes it onto the stack.
+    variable(false);
+
+    if (identifiersEqual(&className, &parser.previous)) {
+      error("A class can't inherit from itself.");
+    }
+
+    // Load the subclass onto the stack.
+    namedVariable(className, false);
+
+    // Wire the superclass up to the subclass.
+    emitByte(OP_INHERIT);
+  }
+
   // Load the class onto the top of the stack, so we can
   // easily bind all its methods to the class in method().
   namedVariable(className, false);

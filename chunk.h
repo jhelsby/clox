@@ -100,6 +100,10 @@ typedef enum {
     // Create a class.
     OP_CLASS,
 
+    // Bind a superclass to a subclass for inheritance.
+    // The superclass should be second on the stack, and the subclass at the top.
+    OP_INHERIT,
+
     // Bind a method to the most recently created class.
     OP_METHOD
 } OpCode;
