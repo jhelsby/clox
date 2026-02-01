@@ -663,6 +663,12 @@ static void dot(bool canAssign) {
   if (canAssign && match(TOKEN_EQUAL)) {
     expression();
     emitBytes(OP_SET_PROPERTY, name);
+  } else if (match(TOKEN_LEFT_PAREN)) {
+    // Optimise calling a method by using a single INVOKE instruction
+    // instead of first creating an ObjBoundMethod and then calling it.
+    uint8_t argCount = argumentList();
+    emitBytes(OP_INVOKE, name);
+    emitByte(argCount);
   } else {
     emitBytes(OP_GET_PROPERTY, name);
   }

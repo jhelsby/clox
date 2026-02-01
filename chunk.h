@@ -82,6 +82,10 @@ typedef enum {
     // Indicate a function call.
     OP_CALL,
 
+    // Optimise calling a method by using a single INVOKE instruction
+    // instead of first creating an ObjBoundMethod and then calling it.
+    OP_INVOKE,
+
     // Indicate that we should load a closure.
     OP_CLOSURE,
 

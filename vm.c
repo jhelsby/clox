@@ -214,6 +214,44 @@ static bool callValue(Value callee, int argCount) {
   return false;
 }
 
+// Combines retrieving and calling a method into a single operation.
+static bool invokeFromClass(ObjClass* klass, ObjString* name, int argCount) {
+  Value method;
+  if (!tableGet(&klass->methods, name, &method)) {
+    runtimeError("Undefined property '%s'.", name->chars);
+    return false;
+  }
+
+  // Push a call to the closure onto the top of the CallFrame stack.
+  return call(AS_CLOSURE(method), argCount);
+}
+
+// Retrieve and call a method from a class instance.
+static bool invoke(ObjString* name, int argCount) {
+  // The receiver's arguments are at the top of the stack,
+  // followed by the receiver.
+  Value receiver = peek(argCount);
+
+  if (!IS_INSTANCE(receiver)) {
+    runtimeError("Only instances have methods.");
+    return false;
+  }
+  ObjInstance* instance = AS_INSTANCE(receiver);
+
+  // Handle the case where a function is stored in a field:
+  // myClass.field = myFun.
+  // Calling this looks like a method - e.g. myClass.field() - but isn't.
+  Value value;
+  if (tableGet(&instance->fields, name, &value)) {
+    // If there's a field with the given name, storing a function,
+    // store it under the argument list so we can call the function.
+    vm.stackTop[-argCount - 1] = value;
+    return callValue(value, argCount);
+  }
+
+  return invokeFromClass(instance->klass, name, argCount);
+}
+
 // Retrieve a method from a class's method table,
 // and wrap it in a new ObjBoundMethod along with the receiver.
 // Put it on the top of the stack.
@@ -606,6 +644,21 @@ static InterpretResult run() {
                 }
                 // callValue() adds a new frame to the call stack,
                 // for the called function. Retrieve this frame.
+                frame = &vm.frames[vm.frameCount - 1];
+                break;
+            }
+            case OP_INVOKE: {
+                // Get the method name and number of arguments.
+                ObjString* method = READ_STRING();
+                int argCount = READ_BYTE();
+
+                // Execute with invoke() and report an error in case of failure.
+                if (!invoke(method, argCount)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+
+                // If successful, there will be a new CallFrame on the stack.
+                // Update frame accordingly.
                 frame = &vm.frames[vm.frameCount - 1];
                 break;
             }
