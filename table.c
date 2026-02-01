@@ -42,7 +42,9 @@ void freeTable(Table* table) {
 // For more details, see:
 // https://craftinginterpreters.com/hash-tables.html#deleting-entries
 static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
-    uint32_t index = key->hash % capacity;
+    // Ensure the index fits in the hash table.
+    // If y is a power of 2, x % y is the same as x & (y-1). The latter is more efficient.
+    uint32_t index = key->hash & (capacity - 1);
 
     // Handle deleted entries - see tableDelete().
     Entry* tombstone = NULL;
@@ -66,7 +68,8 @@ static Entry* findEntry(Entry* entries, int capacity, ObjString* key) {
         // If we don't find the key right away,
         // there must have been a hash collision.
         // Continue the probe sequence.
-        index = (index + 1) % capacity;
+        // If y is a power of 2, x % y is the same as x & (y-1). The latter is more efficient.
+        index = (index + 1) & (capacity - 1);
     }
 }
 
@@ -188,7 +191,8 @@ ObjString* tableFindString(Table* table, const char* chars,
 
   // Search through the hash table for the string.
 
-  uint32_t index = hash % table->capacity;
+  // If y is a power of 2, x % y is the same as x & (y-1). The latter is more efficient.
+  uint32_t index = hash & (table->capacity - 1);
   for (;;) {
     Entry* entry = &table->entries[index];
     // If the hash isn't in the table,
@@ -211,7 +215,8 @@ ObjString* tableFindString(Table* table, const char* chars,
       return entry->key;
     }
 
-    index = (index + 1) % table->capacity;
+    // If y is a power of 2, x % y is the same as x & (y-1). The latter is more efficient.
+    index = (index + 1) & (table->capacity - 1);
   }
 }
 
