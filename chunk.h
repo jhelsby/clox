@@ -49,6 +49,9 @@ typedef enum {
     OP_GET_PROPERTY,
     OP_SET_PROPERTY,
 
+    // Get the method corresponding to a subclass accessing its superclass via super.method.
+    OP_GET_SUPER,
+
     // Operators that return booleans.
     OP_EQUAL,
     OP_GREATER,

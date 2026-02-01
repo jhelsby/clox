@@ -777,6 +777,29 @@ static Token syntheticToken(const char* text) {
   return token;
 }
 
+// Compile a super expression, e.g. var closure = super.myMethod.
+// You can then call this to access myMethod from the superclass, e.g. closure().
+static void super_(bool canAssign) {
+  if (currentClass == NULL) {
+    error("Can't use 'super' outside of a class.");
+  } else if (!currentClass->hasSuperclass) {
+    error("Can't use 'super' in a class with no superclass.");
+  }
+
+  consume(TOKEN_DOT, "Expect '.' after 'super'.");
+  consume(TOKEN_IDENTIFIER, "Expect superclass method name.");
+  uint8_t name = identifierConstant(&parser.previous);
+
+  // Push the current receiver, "this", onto the stack.
+  namedVariable(syntheticToken("this"), false);
+
+  // Get the receiver's parent, "super", onto the stack.
+  namedVariable(syntheticToken("super"), false);
+
+  // Get the method name from that "super" parent. Encode this as an operand.
+  emitBytes(OP_GET_SUPER, name);
+}
+
 // Compile a 'this' keyword - a reference to a method's receiver.
 // This allows the receiving class instance to be accessed
 // inside the body of a method.
@@ -860,7 +883,7 @@ ParseRule rules[] = {
   [TOKEN_OR]            = {NULL,     or_,    PREC_OR},
   [TOKEN_PRINT]         = {NULL,     NULL,   PREC_NONE},
   [TOKEN_RETURN]        = {NULL,     NULL,   PREC_NONE},
-  [TOKEN_SUPER]         = {NULL,     NULL,   PREC_NONE},
+  [TOKEN_SUPER]         = {super_,   NULL,   PREC_NONE},
   [TOKEN_THIS]          = {this_,    NULL,   PREC_NONE},  [TOKEN_TRUE]          = {literal,  NULL,   PREC_NONE},
   [TOKEN_VAR]           = {NULL,     NULL,   PREC_NONE},
   [TOKEN_WHILE]         = {NULL,     NULL,   PREC_NONE},

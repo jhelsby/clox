@@ -565,6 +565,20 @@ static InterpretResult run() {
                 push(value);
                 break;
             }
+            // When a subclass calls super.method, retrieve the corresponding method from the superclass.
+            case OP_GET_SUPER: {
+                ObjString* name = READ_STRING();
+
+                // The compiler has ensured the superclass is on the top of the stack.
+                // The instance is just below it on the stack.
+                ObjClass* superclass = AS_CLASS(pop());
+
+                // If bindMethod succeeds, it pops the instances and pushes the bound method.
+                if (!bindMethod(superclass, name)) {
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
             // Equal can be evaluated on any pair of objects.
             case OP_EQUAL: {
                 Value b = pop();
