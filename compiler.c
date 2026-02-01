@@ -120,6 +120,7 @@ typedef struct Compiler {
 // Track the current, innermost class being compiled.
 typedef struct ClassCompiler {
   struct ClassCompiler* enclosing;
+  bool hasSuperclass;
 } ClassCompiler;
 
 Parser parser;
@@ -767,6 +768,15 @@ static void variable(bool canAssign) {
   namedVariable(parser.previous, canAssign);
 }
 
+// Create an arbitrary token. Used for the "super" hidden variable.
+// This isn't heap-allocated, so we avoid memory leaks and GC considerations.
+static Token syntheticToken(const char* text) {
+  Token token;
+  token.start = text;
+  token.length = (int)strlen(text);
+  return token;
+}
+
 // Compile a 'this' keyword - a reference to a method's receiver.
 // This allows the receiving class instance to be accessed
 // inside the body of a method.
@@ -991,6 +1001,7 @@ static void classDeclaration() {
   // Include the newly created class in the ClassCompiler,
   // since this class is now the innermost class.
   ClassCompiler classCompiler;
+  classCompiler.hasSuperclass = false; // Assume it's not a subclass initially.
   classCompiler.enclosing = currentClass;
   currentClass = &classCompiler;
 
@@ -1005,11 +1016,19 @@ static void classDeclaration() {
       error("A class can't inherit from itself.");
     }
 
+    // Store a reference to the class's superclass as a hidden variable.
+    beginScope();
+    // Call the variable super since it's a reserved word, so normal variable names won't clash.
+    addLocal(syntheticToken("super"));
+    defineVariable(0);
+
     // Load the subclass onto the stack.
     namedVariable(className, false);
 
     // Wire the superclass up to the subclass.
     emitByte(OP_INHERIT);
+
+    classCompiler.hasSuperclass = true;
   }
 
   // Load the class onto the top of the stack, so we can
@@ -1027,6 +1046,11 @@ static void classDeclaration() {
   // Now we've bound all its methods,
   // remove the class from the top of the stack.
   emitByte(OP_POP);
+
+  // End the scope for the hidden "super" variable, if any.
+  if (classCompiler.hasSuperclass) {
+    endScope();
+  }
 
   // Restore the enclosing class, since we're done with this class.
   // Note this sets currentClass to NULL if we are inside a top-level class.
