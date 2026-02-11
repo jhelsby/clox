@@ -43,6 +43,17 @@ void freeValueArray(ValueArray* array) {
 
 // Print the value of the given constant.
 void printValue(Value value) {
+#ifdef NAN_BOXING
+    if (IS_BOOL(value)) {
+        printf(AS_BOOL(value) ? "true" : "false");
+    } else if (IS_NIL(value)) {
+        printf("nil");
+    } else if (IS_NUMBER(value)) {
+        printf("%g", AS_NUMBER(value));
+    } else if (IS_OBJ(value)) {
+        printObject(value);
+    }
+#else
     switch (value.type) {
         case VAL_BOOL:
           printf(AS_BOOL(value) ? "true" : "false");
@@ -51,10 +62,22 @@ void printValue(Value value) {
         case VAL_NUMBER: printf("%g", AS_NUMBER(value)); break;
         case VAL_OBJ: printObject(value); break;
     }
+#endif
 }
 
 // Check two values are equal by comparing and unwrapping their types.
 bool valuesEqual(Value a, Value b) {
+#ifdef NAN_BOXING
+    // Special case for numbers when NaN boxing, because the
+    // IEEE 754 spec mandates that NaN != NaN.
+    // This is more inefficient though, and could be omitted
+    // for performance if we don't care if NaN != NaN.
+    if (IS_NUMBER(a) && IS_NUMBER(b)) {
+        return AS_NUMBER(a) == AS_NUMBER(b);
+    }
+    // If NaN-boxing, two non-number Values are equal iff their bit representations are equal.
+    return a == b;
+#else
     if (a.type != b.type) return false;
     switch (a.type) {
         case VAL_BOOL:   return AS_BOOL(a) == AS_BOOL(b);
@@ -69,4 +92,5 @@ bool valuesEqual(Value a, Value b) {
 
         default:         return false; // Unreachable.
     }
+#endif
 }

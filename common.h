@@ -8,6 +8,11 @@
 #include <stddef.h>
 #include <stdint.h>
 
+// Flag to use NaN boxing - a technique which reduce the amount of memory
+// used by Lox's Value type, by storing details in uint-64 NaN mantissa bits:
+// https://craftinginterpreters.com/optimization.html#what-is-and-is-not-a-number
+#define NAN_BOXING
+
 // Flag to dump a compiled chunk.
 // #define DEBUG_PRINT_CODE
 
